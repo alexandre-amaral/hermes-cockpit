@@ -336,7 +336,7 @@ export function useSwarm(): SwarmState & { refresh: () => Promise<void> } {
   // Espaço ativo: runs filtradas (bot que pediu, senão repo). Aprovações e
   // perguntas pendentes NÃO são filtradas — nada que espera você fica escondido.
   const space = useSpace()
-  const runs = useMemo(() => (space === 'tudo' ? s.runs : s.runs.filter((r) => inSpace(runSpace(r), space))), [s.runs, space])
+  const runs = useMemo(() => s.runs.filter((r) => inSpace(runSpace(r), space)), [s.runs, space])
   return { ...s, runs, refresh: refreshSwarm }
 }
 

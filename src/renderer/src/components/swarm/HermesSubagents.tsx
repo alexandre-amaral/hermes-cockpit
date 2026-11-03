@@ -99,7 +99,7 @@ export function HermesSubagents({
                     style={{ paddingLeft: 8 + lvl * 14 }}
                     data-active={on || undefined}
                     className={`hc-rail-item hc-press mb-0.5 flex w-full min-w-0 flex-col rounded py-1.5 pr-2 text-left ${
-                      on ? 'bg-panel2' : 'hover:bg-panel2/60'
+                      on ? 'bg-panel2' : 'hover:bg-hover/60'
                     }`}
                   >
                     <span className="flex min-w-0 items-center gap-2">
@@ -325,7 +325,7 @@ function SpawnTrees({ rpc }: { rpc: HermesRpc }) {
                       toast({ title: 'spawn_tree.load falhou', detail: errMsg(e), tone: 'error' })
                     }
                   }}
-                  className="flex w-full items-baseline gap-2 rounded px-2 py-1 text-left text-[11px] text-dim hover:bg-panel2/60 hover:text-ink"
+                  className="flex w-full items-baseline gap-2 rounded px-2 py-1 text-left text-[11px] text-dim hover:bg-hover/60 hover:text-ink"
                 >
                   <span className="min-w-0 flex-1 truncate">{r.label || r.path.split('/').pop()}</span>
                   <span className="shrink-0 text-[10px] text-faint">{r.count ?? 0}</span>

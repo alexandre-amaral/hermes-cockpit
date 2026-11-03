@@ -2,6 +2,7 @@ import { join } from 'node:path'
 import { app, BrowserWindow, ipcMain, Menu, session, shell, type MenuItemConstructorOptions } from 'electron'
 import { apiFetch, type ApiInit, ensureBackend, hasBackend, stopBackend, stopBackendGracefully } from './backend'
 import { registerDomainIpc } from './ipc'
+import { editMenu } from './menu'
 import { stopAllShells } from './ipc/shell'
 import { setWindowFactory } from './ipc/windows'
 import { stopSwarmWatch } from './ipc/swarm'
@@ -77,7 +78,7 @@ function installMenu(): void {
         ...(process.platform === 'darwin' ? [{ role: 'close' as const }] : [{ role: 'quit' as const }]),
       ],
     },
-    { role: 'editMenu' },
+    editMenu(),
     {
       label: 'View',
       submenu: [

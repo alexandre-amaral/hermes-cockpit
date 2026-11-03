@@ -10,7 +10,7 @@
     "dev:web": "vite --config vite.web.config.ts",
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit",
-    "test": "node --test \"test/*.test.mjs\" \"src/renderer/src/**/*.test.ts\"",
+    "test": "node --test \"test/*.test.mjs\" \"src/renderer/src/**/*.test.ts\" \"src/main/*.test.ts\"",
     "start": "electron-vite preview",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder --mac dmg",

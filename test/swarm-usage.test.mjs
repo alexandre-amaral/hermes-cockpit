@@ -160,15 +160,24 @@ test('summary()/result() de lib/runs.mjs expõem tokensTotal real (e ausência h
 test('run.mjs grava tokensTotal/tokenUsage no meta ao ver o result (claude falso)', () => {
   const work = join(TMP, 'work') // não é repo git → isolation none
   mkdirSync(work, { recursive: true })
-  const fake = join(TMP, 'fake-claude.mjs')
+  const script = join(TMP, 'fake-claude.mjs')
   writeFileSync(
-    fake,
-    `#!${process.execPath}\n` +
-      `const out = (o) => process.stdout.write(JSON.stringify(o) + '\\n')\n` +
+    script,
+    `const out = (o) => process.stdout.write(JSON.stringify(o) + '\\n')\n` +
       `out({ type: 'system', subtype: 'init', session_id: 'sess-1', model: 'claude-test' })\n` +
       `out({ type: 'result', subtype: 'success', is_error: false, num_turns: 3, result: 'ok', session_id: 'sess-1', total_cost_usd: 0.5, duration_ms: 10, usage: ${JSON.stringify(USAGE)} })\n`,
   )
-  chmodSync(fake, 0o755)
+  // POSIX pode executar o .mjs direto via shebang+chmod; Windows não entende
+  // shebang, então o binário "falso" é um .cmd (igual ao shim que o npm
+  // instala de verdade), que spawnSpec() resolve para `node <script>`.
+  let fake = script
+  if (process.platform === 'win32') {
+    fake = join(TMP, 'fake-claude.cmd')
+    writeFileSync(fake, `@echo off\r\n"${process.execPath}" "${script}" %*\r\n`)
+  } else {
+    writeFileSync(script, `#!${process.execPath}\n${readFileSync(script, 'utf8')}`)
+    chmodSync(fake, 0o755)
+  }
   const r = makeRun({ status: 'queued', repo: work, cwd: work, permissionMode: 'manual' })
   const p = spawnSync(process.execPath, [join(ROOT, 'swarm', 'run.mjs'), r.id], {
     env: { ...process.env, CLAUDE_BIN: fake },

@@ -12,7 +12,7 @@ import {
 
 // Seletor de workspace/repo no topo do dock, compartilhado por Terminal,
 // Diff · Git e Arquivos. Fontes: /api/fs/default-cwd (padrão) e ops:repos
-// (lista de repos do Mac, quando o domínio ops existir). Caminho livre também.
+// (lista de repos do host, quando o domínio ops existir). Caminho livre também.
 
 export function WorkspacePicker() {
   const ws = useWorkspace()

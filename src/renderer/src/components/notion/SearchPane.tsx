@@ -85,7 +85,7 @@ export function SearchPane({
             aria-label="buscar no Notion"
             className="min-w-0 flex-1 bg-transparent text-[12px] text-ink outline-none placeholder:text-faint"
           />
-          {busy && <Spinner size={10} className="text-amber" />}
+          {busy && <Spinner size={10} className="text-warn" />}
         </div>
         <div className="flex gap-1 border-b border-edge px-3 py-1.5">
           {(
@@ -125,7 +125,7 @@ export function SearchPane({
                   }}
                   className={cx(
                     'group relative flex w-full items-center gap-2 px-3 py-1.5 text-left',
-                    sel === h.id ? 'bg-amber/[0.07]' : i === cursor ? 'bg-panel2/70' : 'hover:bg-panel2/50',
+                    sel === h.id ? 'bg-amber/[0.07]' : i === cursor ? 'bg-panel2/70' : 'hover:bg-hover/50',
                   )}
                 >
                   {sel === h.id && <span aria-hidden className="absolute inset-y-1 left-0 w-[2px] rounded bg-amber" />}

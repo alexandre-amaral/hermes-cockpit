@@ -1,14 +1,18 @@
 import type { ReactNode } from 'react'
 import { cx } from './cx'
 
-export type BadgeTone = 'neutral' | 'amber' | 'phos' | 'cyanic' | 'alert'
+// 'amber' = acento (destaque neutro, ex.: "atual"); 'warn' = aviso/pendência
+// (--color-warn). Os fundos usam os tokens *-soft, que valem a própria cor a
+// 10% — igual ao bg-<cor>/10 de antes.
+export type BadgeTone = 'neutral' | 'amber' | 'warn' | 'phos' | 'cyanic' | 'alert'
 
 const TONE: Record<BadgeTone, string> = {
   neutral: 'border-edge2 text-dim bg-panel2/60',
   amber: 'border-amber/50 text-amber bg-amber/10',
-  phos: 'border-phos/40 text-phos bg-phos/10',
-  cyanic: 'border-cyanic/40 text-cyanic bg-cyanic/10',
-  alert: 'border-alert/50 text-alert bg-alert/10',
+  warn: 'border-[color-mix(in_srgb,var(--color-warn)_50%,transparent)] text-warn bg-warn-soft',
+  phos: 'border-phos/40 text-phos bg-phos-soft',
+  cyanic: 'border-cyanic/40 text-cyanic bg-cyanic-soft',
+  alert: 'border-alert/50 text-alert bg-alert-soft',
 }
 
 /** Rótulo/contador pequeno. `count` vira pílula numérica (99+); `pulse` anima um ponto. */
@@ -47,6 +51,7 @@ export function Badge({
 const DOT: Record<BadgeTone, string> = {
   neutral: 'bg-faint',
   amber: 'bg-amber',
+  warn: 'bg-warn',
   phos: 'bg-phos',
   cyanic: 'bg-cyanic',
   alert: 'bg-alert',

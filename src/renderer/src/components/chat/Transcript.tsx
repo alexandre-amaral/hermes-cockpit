@@ -377,7 +377,7 @@ function ToolGroup({ tools, verbose, fresh }: { tools: ToolItem[]; verbose: bool
         type="button"
         onClick={() => setUserOpen(!open)}
         aria-expanded={open}
-        className="flex w-full min-w-0 items-center gap-2 px-2.5 py-1.5 text-left font-mono text-[11px] hover:bg-panel2/70"
+        className="flex w-full min-w-0 items-center gap-2 px-2.5 py-1.5 text-left font-mono text-[11px] hover:bg-hover/70"
       >
         <span className={`inline-block w-3 text-faint transition-transform duration-150 ${open ? 'rotate-90' : ''}`}>▸</span>
         <span className={`label tracking-[0.14em] ${runningN ? 'text-amber' : 'text-ink/85'}`}>{tools.length} ações</span>
@@ -469,7 +469,7 @@ function ToolCard({ tool, verbose }: { tool: ToolItem; verbose: boolean }) {
     <div className={`overflow-hidden rounded-md border bg-panel/60 font-mono text-[11.5px] ${tone}`}>
       <button
         onClick={() => hasDetail && setOpen((v) => !v)}
-        className={`flex w-full min-w-0 items-center gap-2 px-2.5 py-1 text-left ${hasDetail ? 'cursor-pointer hover:bg-panel2' : 'cursor-default'}`}
+        className={`flex w-full min-w-0 items-center gap-2 px-2.5 py-1 text-left ${hasDetail ? 'cursor-pointer hover:bg-hover' : 'cursor-default'}`}
       >
         <span className={`w-4 shrink-0 text-center ${running ? 'text-amber' : failed ? 'text-alert' : 'text-dim'}`}>{toolIcon(tool.name)}</span>
         <span className={`shrink-0 ${running ? 'text-amber' : 'text-ink/90'}`}>{tool.name}</span>
@@ -572,7 +572,7 @@ function DelegationStrip({ tool }: { tool: ToolItem }) {
  *  indeterminado, aguardando 60%, fim 100%). */
 function DelegationRow({ id, run: r, now }: { id: string; run: RunMeta | undefined; now: number }) {
   const active = r ? isActive(r.status) : false
-  const tone = !r ? 'bg-faint' : r.status === 'done' ? 'bg-phos' : r.status === 'error' ? 'bg-alert' : r.status === 'cancelled' ? 'bg-faint' : r.status === 'waiting_approval' ? 'bg-amber' : 'bg-phos'
+  const tone = !r ? 'bg-faint' : r.status === 'done' ? 'bg-phos' : r.status === 'error' ? 'bg-alert' : r.status === 'cancelled' ? 'bg-faint' : r.status === 'waiting_approval' ? 'bg-warn' : 'bg-phos'
   const pct = !r ? 0 : r.status === 'queued' ? 8 : r.status === 'waiting_approval' ? 60 : 100
   const openHere = (mode: 'watch' | 'resume') => {
     invoke<{ cwd: string; cmd: string; title: string }>('swarm:terminalCommand', id, mode)
@@ -587,7 +587,7 @@ function DelegationRow({ id, run: r, now }: { id: string; run: RunMeta | undefin
           {r?.title ?? id}
         </span>
         {r?.repo && <span className="hidden shrink-0 truncate text-faint sm:inline">{r.repo.split('/').filter(Boolean).at(-1)}</span>}
-        {r && <span className={`shrink-0 ${r.status === 'error' ? 'text-alert' : r.status === 'waiting_approval' ? 'text-amber' : 'text-faint'}`}>{STATUS_LABEL[r.status]}</span>}
+        {r && <span className={`shrink-0 ${r.status === 'error' ? 'text-alert' : r.status === 'waiting_approval' ? 'text-warn' : 'text-faint'}`}>{STATUS_LABEL[r.status]}</span>}
         {r?.numTurns != null && <span className="shrink-0 tabular-nums text-faint">{r.numTurns}t</span>}
         {r && <span className="shrink-0 tabular-nums text-faint">{fmtDuration(runElapsedMs(r, now))}</span>}
         {r?.tokensTotal != null && <span className="shrink-0 tabular-nums text-dim">{fmtRunTokens(r.tokensTotal)}</span>}

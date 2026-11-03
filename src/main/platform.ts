@@ -2,9 +2,9 @@
 // suportado com degradação honesta onde a feature depende de POSIX/macOS
 // (PTY, ps/lsof, osascript, captura de áudio do sistema).
 import { spawn, type ChildProcess } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname, join, sep } from 'node:path'
+import { basename, dirname, join, sep } from 'node:path'
 
 export const IS_WIN = process.platform === 'win32'
 export const IS_MAC = process.platform === 'darwin'
@@ -34,6 +34,13 @@ export function findExecutable(bin: string, dirs: string[] = extraBinDirs()): st
     }
   }
   return null
+}
+
+/** Procura `bin` nos diretórios do PATH do processo (chave "Path" no Windows). */
+export function findOnPath(bin: string, env: NodeJS.ProcessEnv = process.env): string | null {
+  const key = Object.keys(env).find((k) => k.toUpperCase() === 'PATH')
+  const dirs = (key ? env[key] : '')?.split(IS_WIN ? ';' : ':').filter(Boolean) ?? []
+  return findExecutable(bin, dirs)
 }
 
 /** `.cmd`/`.bat` só executam via shell no Windows (Node recusa spawn direto). */
@@ -68,12 +75,106 @@ export function resolveHermesAgent(
   return { agentDir, python: venvPython(join(agentDir, 'venv')) }
 }
 
+/**
+ * Raiz do Hermes (a pasta que contém `profiles/`), independente do perfil
+ * ativo: HERMES_HOME normalmente aponta para `<raiz>/profiles/<nome>`, então o
+ * avô também é candidato. Depois: instalação inferida de HERMES_BIN →
+ * `%LOCALAPPDATA%\hermes` no Windows → `~/.hermes`. Sem nenhum candidato com
+ * `profiles/`, devolve o último (o default histórico).
+ */
+export function resolveHermesHome(
+  env: NodeJS.ProcessEnv = process.env,
+  home: string = homedir(),
+  exists: (p: string) => boolean = existsSync,
+): string {
+  const candidates: string[] = []
+  if (env.HERMES_HOME) {
+    candidates.push(env.HERMES_HOME)
+    if (basename(dirname(env.HERMES_HOME)) === 'profiles') candidates.push(dirname(dirname(env.HERMES_HOME)))
+  }
+  if (env.HERMES_BIN) candidates.push(dirname(dirname(env.HERMES_BIN)))
+  if (IS_WIN && env.LOCALAPPDATA) candidates.push(join(env.LOCALAPPDATA, 'hermes'))
+  candidates.push(join(home, '.hermes'))
+  return candidates.find((d) => exists(join(d, 'profiles'))) ?? candidates[candidates.length - 1]
+}
+
+/**
+ * Ferramenta portátil instalada pelo Hermes, em `<raiz>/tools/<prefixo>…/<rel>`
+ * (ex.: `python-3.14…/python.exe`, `git-2.53…/bin/bash.exe`). Útil no app
+ * empacotado, onde o PATH é mínimo mas o Hermes traz tudo que precisa.
+ */
+export function findHermesTool(prefix: string, rel: string): string | null {
+  const dir = join(resolveHermesHome(), 'tools')
+  let names: string[]
+  try {
+    names = readdirSync(dir)
+  } catch {
+    return null // instalação sem tools/ (ex.: macOS via homebrew)
+  }
+  for (const name of names.sort().reverse()) {
+    if (!name.startsWith(prefix)) continue
+    const p = join(dir, name, rel)
+    if (existsSync(p)) return p
+  }
+  return null
+}
+
+/**
+ * python3 utilizável (o relay de PTY do terminal depende dele). macOS/Linux:
+ * caminhos usuais e PATH. Windows: venv do Hermes → python portátil de
+ * `<raiz>/tools` → PATH, ignorando o stub da Microsoft Store (que abre a loja
+ * em vez de executar). null quando não há nenhum.
+ */
+export function resolvePython(): string | null {
+  if (!IS_WIN) {
+    const posix = ['/opt/homebrew/bin/python3', '/usr/local/bin/python3', '/usr/bin/python3']
+    return posix.find((p) => existsSync(p)) ?? findOnPath('python3')
+  }
+  const venv = resolveHermesAgent().python
+  if (existsSync(venv)) return venv
+  const tool = findHermesTool('python-', 'python.exe')
+  if (tool) return tool
+  for (const bin of ['python3', 'python', 'py']) {
+    const p = findOnPath(bin)
+    if (p && !/[\\/]WindowsApps[\\/]/i.test(p)) return p
+  }
+  return null
+}
+
 /** `p` é `root` ou está dentro dele (separador da plataforma; case-insensitive no Windows). */
 export function isInside(root: string, p: string): boolean {
   const norm = (s: string) => (IS_WIN ? s.toLowerCase() : s)
   const r = norm(root)
   const q = norm(p)
   return q === r || q.startsWith(r.endsWith(sep) ? r : r + sep)
+}
+
+/**
+ * Como killTree, mas por pid solto — processo que não é filho deste (ex.: o
+ * runner do swarm, lido do meta.json). Windows: `taskkill /T /F`; POSIX: sinal
+ * no grupo e depois no pid.
+ */
+export function killPidTree(pid: number, sig: NodeJS.Signals = 'SIGTERM'): void {
+  if (!Number.isInteger(pid) || pid <= 0) return
+  if (IS_WIN) {
+    try {
+      spawn('taskkill', ['/pid', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true })
+    } catch {
+      /* já morto */
+    }
+    return
+  }
+  try {
+    process.kill(-pid, sig)
+    return
+  } catch {
+    /* não é líder de grupo: tenta o pid direto */
+  }
+  try {
+    process.kill(pid, sig)
+  } catch {
+    /* já morto */
+  }
 }
 
 /**

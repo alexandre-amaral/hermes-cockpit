@@ -5,15 +5,18 @@ import { tildify, useWorkspace } from '../../lib/devtools'
 import { XtermView, type PtyStatus } from './XtermView'
 import { ConfirmButton, ToolButton } from './ui'
 
-// Aba Terminal: várias sessões (+). Padrão: zsh de verdade no workspace do
+// Aba Terminal: várias sessões (+). Padrão: shell de verdade no workspace do
 // dock (relay de PTY no main, ops:shell.*). Opcional: `hermes --tui` de um
 // profile via /api/pty do serve. Ver XtermView para os dois transportes.
 
+/** Sentinela interna do shell local (o nome real vem do main, no rodapé). */
 const SHELL = 'zsh'
+/** Rótulo do shell local: quem escolhe o executável é o main (zsh/git-bash/powershell). */
+const SHELL_LABEL = window.hermes?.platform === 'win32' ? 'shell' : 'zsh'
 
 interface Session {
   id: string
-  /** 'zsh' (shell) ou nome do profile (hermes --tui) */
+  /** SHELL (shell local) ou nome do profile (hermes --tui) */
   profile: string
   cwd?: string | null
   /** comando inicial (ex.: instância do swarm) e rótulo da aba */
@@ -131,12 +134,12 @@ export function TerminalTab({ rpc, active }: { rpc?: HermesRpc | null; active: b
             <div
               key={s.id}
               className={`group flex shrink-0 items-center gap-1.5 rounded border px-2 py-0.5 text-[10px] ${
-                on ? 'border-edge2 bg-panel2 text-ink' : 'border-transparent text-faint hover:text-dim'
+                on ? 'border-edge2 bg-sel text-sel-ink' : 'border-transparent text-faint hover:text-dim'
               }`}
             >
               <button type="button" onClick={() => setCurrent(s.id)} className="flex items-center gap-1.5">
                 <Dot status={s.status} />
-                <span className="max-w-[160px] truncate uppercase tracking-wider">{s.label ?? (s.profile === SHELL ? 'zsh' : `${s.profile} tui`)}</span>
+                <span className="max-w-[160px] truncate uppercase tracking-wider">{s.label ?? (s.profile === SHELL ? SHELL_LABEL : `${s.profile} tui`)}</span>
                 <span className="text-faint">#{i + 1}</span>
               </button>
               {s.status === 'open' || s.status === 'connecting' ? (
@@ -156,7 +159,7 @@ export function TerminalTab({ rpc, active }: { rpc?: HermesRpc | null; active: b
             title="profile do próximo terminal"
             className="rounded border border-edge bg-void px-1 py-0.5 text-[10px] text-dim outline-none"
           >
-            <option value={SHELL}>zsh (shell)</option>
+            <option value={SHELL}>{SHELL_LABEL} (shell local)</option>
             <optgroup label="hermes --tui">
               {profiles.map((p) => (
                 <option key={p} value={p}>
@@ -189,7 +192,7 @@ export function TerminalTab({ rpc, active }: { rpc?: HermesRpc | null; active: b
         {sessions.length === 0 && (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-[11px] text-faint">
             nenhum terminal aberto
-            <ToolButton onClick={() => add()}>+ abrir {nextProfile === SHELL ? 'zsh' : `${nextProfile} tui`}</ToolButton>
+            <ToolButton onClick={() => add()}>+ abrir {nextProfile === SHELL ? SHELL_LABEL : `${nextProfile} tui`}</ToolButton>
           </div>
         )}
       </div>
@@ -198,7 +201,7 @@ export function TerminalTab({ rpc, active }: { rpc?: HermesRpc | null; active: b
         <div className="flex shrink-0 items-center gap-2 border-t border-edge px-2 py-1 text-[10px] text-faint">
           <span className="label">pty</span>
           <span className="truncate">
-            {cur.profile === SHELL ? `zsh · ${cur.cwd ? tildify(cur.cwd) : '~'}` : `hermes --tui · profile ${cur.profile}`} ·{' '}
+            {cur.profile === SHELL ? `${SHELL_LABEL} · ${cur.cwd ? tildify(cur.cwd) : '~'}` : `hermes --tui · profile ${cur.profile}`} ·{' '}
             {statusLabel(cur.status)}
             {cur.detail ? ` · ${cur.detail}` : ''}
           </span>

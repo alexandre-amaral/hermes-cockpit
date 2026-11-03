@@ -72,10 +72,17 @@ export function spaceOfBot(name: string): ItemSpace {
   return 'shared'
 }
 
+/**
+ * Espaço de um caminho de repo/pasta. Normaliza o separador antes de testar:
+ * no Windows os caminhos chegam com `\\` (C:\\Users\\…\\Documents\\Houer\\repo) e os
+ * regexes de `/` não casariam. Comparação sem distinguir maiúsculas (o Windows
+ * também não distingue).
+ */
 export function spaceOfPath(path: string | null | undefined): ItemSpace {
   if (!path) return 'shared'
-  if (/\/Documents\/Houer(\/|$)/i.test(path) || /\/houer[^/]*$/i.test(path)) return 'houer'
-  if (/\/Documents\/Alexandre(\/|$)/.test(path)) return 'pessoal'
+  const p = path.replace(/\\/g, '/')
+  if (/\/Documents\/Houer(\/|$)/i.test(p) || /\/houer[^/]*$/i.test(p)) return 'houer'
+  if (/\/Documents\/Alexandre(\/|$)/i.test(p)) return 'pessoal'
   return 'shared'
 }
 

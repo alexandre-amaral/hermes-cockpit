@@ -39,7 +39,7 @@ export function BotsRail({ bots, selected, onSelect, loading, error, footer, spa
 
   let n = 0
   return (
-    <aside className="flex h-full min-w-0 flex-col bg-panel">
+    <aside className="flex h-full min-w-0 flex-col bg-sidebar">
       <Group
         id="hc-rail"
         orientation="vertical"
@@ -64,7 +64,7 @@ export function BotsRail({ bots, selected, onSelect, loading, error, footer, spa
                 tone={error ? 'error' : 'neutral'}
                 icon={<Icon name={error ? 'alert' : 'bot'} size={14} />}
                 title={error ? 'bots indisponíveis' : hiddenCount > 0 ? 'nenhum bot neste espaço' : 'nenhum bot'}
-                detail={error ?? (hiddenCount > 0 ? `${hiddenCount} bot(s) em outros espaços — troque para Tudo (⌘⇧3)` : 'profiles.list não retornou profiles')}
+                detail={error ?? (hiddenCount > 0 ? `${hiddenCount} bot(s) em outros espaços — troque de espaço (⌘⇧1/2/3)` : 'profiles.list não retornou profiles')}
               />
             )}
             {GROUP_ORDER.map((group) => {
@@ -135,8 +135,8 @@ function BotItem({
       className={cx(
         'hc-rail-item hc-rise hc-press group flex w-full items-center gap-2.5 rounded-md border px-2.5 py-1.5 text-left text-[12px]',
         active
-          ? 'hc-edge-active border-transparent bg-panel2 text-ink shadow-[var(--hc-shadow-1)]'
-          : 'border-transparent text-dim hover:translate-x-0.5 hover:bg-panel2/60 hover:text-ink',
+          ? 'hc-edge-active border-transparent bg-sel text-sel-ink shadow-[var(--hc-shadow-1)]'
+          : 'border-transparent text-dim hover:translate-x-0.5 hover:bg-hover/60 hover:text-ink',
       )}
     >
       {active ? (

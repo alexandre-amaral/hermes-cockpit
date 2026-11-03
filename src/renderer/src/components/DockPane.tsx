@@ -3,6 +3,7 @@ import { Group, Panel, useDefaultLayout, usePanelRef } from 'react-resizable-pan
 import { GROUP_IDS, SIZES, safeStorage } from '../lib/layout'
 import type { HermesRpc } from '../lib/rpc'
 import { DOCK_TAB_EVENT } from '../lib/devtools'
+import { HOST_LABEL, HOST_THIS, IS_MAC, PLATFORM } from '../lib/platform'
 import { RegionView } from './panels/RegionView'
 import { ResizeHandle, useCollapseSync } from './layout/ResizeHandle'
 import { SwarmDockTab } from './swarm/SwarmDockTab'
@@ -14,12 +15,12 @@ import { PreviewTab } from './devtools/PreviewTab'
 import { ScreenTab } from './devtools/ScreenTab'
 
 export const DOCK_TABS = [
-  { id: 'terminal', label: 'Terminal', hint: 'zsh no workspace ou hermes --tui (xterm.js)', usesWorkspace: true },
+  { id: 'terminal', label: 'Terminal', hint: `shell ${IS_MAC ? 'zsh' : 'do sistema'} no workspace ou hermes --tui (xterm.js)`, usesWorkspace: true },
   { id: 'diff', label: 'Diff · Git', hint: 'alterações, diff por arquivo, branches e worktrees', usesWorkspace: true },
   { id: 'arquivos', label: 'Arquivos', hint: 'navegador de arquivos do workspace', usesWorkspace: true },
   { id: 'preview', label: 'Preview', hint: 'app local em iframe', usesWorkspace: false },
   { id: 'swarm', label: 'Swarm', hint: 'execuções do swarm', usesWorkspace: false },
-  { id: 'tela', label: 'Tela Mac', hint: 'screenshot da tela do Mac', usesWorkspace: false },
+  { id: 'tela', label: PLATFORM ? `Tela ${HOST_LABEL}` : 'Tela', hint: `screenshot da tela ${HOST_THIS}`, usesWorkspace: false },
 ] as const
 
 export type DockTabId = (typeof DOCK_TABS)[number]['id']
@@ -37,7 +38,7 @@ interface Props {
 }
 
 // Dock lateral: seletor de workspace + abas (Terminal, Diff · Git, Arquivos,
-// Preview, Swarm, Tela Mac) em cima e cards do registry embaixo, com alça
+// Preview, Swarm, Tela) em cima e cards do registry embaixo, com alça
 // vertical redimensionável/colapsável. Abas montam na 1ª visita e ficam
 // montadas (ocultas) ao trocar — terminal não perde a sessão.
 export function DockPane({ tab, onTabChange, cards, onCardsChange, cardsOpen, onCardsOpenChange, rpc = null }: Props) {

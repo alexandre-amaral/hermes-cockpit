@@ -14,10 +14,11 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANT: Record<ButtonVariant, string> = {
-  primary: 'border-amber/70 bg-amber text-void font-semibold hover:brightness-110 hover:hc-glow-amber',
+  // hc-btn-primary é só um gancho de tema (presets podem sobrescrever).
+  primary: 'hc-btn-primary border-amber/70 bg-amber text-void font-semibold hover:brightness-110 hover:hc-glow-amber',
   secondary: 'border-edge2 bg-panel2 text-ink hover:border-faint hover:bg-edge/60',
   outline: 'border-edge2 bg-transparent text-dim hover:border-amber/60 hover:text-amber',
-  ghost: 'border-transparent bg-transparent text-dim hover:bg-panel2 hover:text-ink',
+  ghost: 'border-transparent bg-transparent text-dim hover:bg-hover hover:text-ink',
   danger: 'border-alert/50 bg-transparent text-alert hover:bg-alert/10 hover:border-alert',
 }
 

@@ -40,6 +40,7 @@ import {
 } from './lib/layout'
 import { LAYOUT_PRESETS, loadRegions, resetRegions, saveRegions, type RegionLayout } from './lib/panels'
 import { SPACES, SPACE_ORDER, inSpace, setSpace, spaceOfBot, useSpace, type Space } from './lib/space'
+import { terminalWantsEvent } from './lib/term-keys'
 import { HermesRpc, type ConnState } from './lib/rpc'
 import { toast } from './lib/toast'
 import {
@@ -313,6 +314,10 @@ function Cockpit({ conn, rpc, connState, theme, setTheme }: CockpitProps) {
   const keyRef = useRef<(e: KeyboardEvent) => void>(() => {})
   keyRef.current = (e: KeyboardEvent) => {
     if (!(e.metaKey || e.ctrlKey) || e.altKey) return
+    // Terminal focado tem precedência nas teclas dele (Ctrl+Shift+V = colar,
+    // não ditado; Ctrl+= / - / 0 = fonte do PTY, não escala da UI). O resto
+    // dos atalhos globais (⌘K, views, espaços...) continua passando.
+    if (terminalWantsEvent(e)) return
     const k = e.key.toLowerCase()
     const act = (fn: () => void) => {
       e.preventDefault()

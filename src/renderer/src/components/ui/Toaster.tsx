@@ -92,7 +92,7 @@ function ToastCard({ t }: { t: Shown }) {
         type="button"
         aria-label="fechar"
         onClick={() => dismissToast(t.id)}
-        className="hc-press -mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[12px] text-faint hover:bg-panel2 hover:text-ink"
+        className="hc-press -mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[12px] text-faint hover:bg-hover hover:text-ink"
       >
         ×
       </button>

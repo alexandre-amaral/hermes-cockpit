@@ -311,7 +311,7 @@ function LocalModelRow({ m, users, onChanged }: { m: OllamaModel; users: string[
     }
   }
   return (
-    <tr className="border-b border-edge/60 hover:bg-panel2/60">
+    <tr className="border-b border-edge/60 hover:bg-hover/60">
       <td className="px-2 py-1.5">
         <div className="flex items-center gap-1.5">
           {m.loaded && <span className="hc-pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-phos" title="carregado" />}
@@ -429,7 +429,7 @@ function BotModelRow({
   }
 
   return (
-    <div className="relative flex flex-wrap items-center gap-2 px-3 py-1.5 text-[11.5px] hover:bg-panel2/40">
+    <div className="relative flex flex-wrap items-center gap-2 px-3 py-1.5 text-[11.5px] hover:bg-hover/40">
       <div className="w-36 min-w-0">
         <div className="truncate text-ink">{botTitle(profile.name)}</div>
         <div className="truncate text-[10px] text-faint">{group ? GROUP_LABELS[group] ?? group : profile.name}</div>

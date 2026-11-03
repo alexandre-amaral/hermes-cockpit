@@ -62,7 +62,7 @@ export function PagePicker({ value, onPick }: { value: NotionHit | null; onPick:
               type="button"
               onClick={() => onPick(h)}
               className={cx(
-                'flex w-full items-center gap-2 px-2 py-1 text-left text-[11px] hover:bg-panel2',
+                'flex w-full items-center gap-2 px-2 py-1 text-left text-[11px] hover:bg-hover',
                 value?.id === h.id ? 'text-amber' : 'text-dim',
               )}
             >

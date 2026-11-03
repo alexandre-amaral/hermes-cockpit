@@ -1,7 +1,9 @@
 import { BrowserWindow, ipcMain, type IpcMainInvokeEvent } from 'electron'
+import { register as registerClipboard } from './clipboard'
 import { register as registerFlows } from './flows'
 import { register as registerNotion } from './notion'
 import { register as registerOps } from './ops'
+import { register as registerQuota } from './quota'
 import { register as registerShell } from './shell'
 import { register as registerWindows } from './windows'
 import { register as registerStorage } from './storage'
@@ -17,7 +19,7 @@ import { register as registerTranscriber } from './transcriber'
 // Cada domínio vive em ./<domínio>.ts e exporta register(): void, usando
 // handle() daqui (que valida o prefixo e serializa erros como Error simples).
 
-export const DOMAINS = ['swarm', 'ops', 'storage', 'transcriber', 'notion', 'flows'] as const
+export const DOMAINS = ['swarm', 'ops', 'storage', 'transcriber', 'notion', 'flows', 'quota'] as const
 export type Domain = (typeof DOMAINS)[number]
 
 export function handle<A extends unknown[], R>(
@@ -48,6 +50,8 @@ export function registerDomainIpc(): void {
   registerTranscriber()
   registerNotion()
   registerFlows()
+  registerQuota()
   registerShell()
+  registerClipboard()
   registerWindows()
 }

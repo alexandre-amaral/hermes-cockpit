@@ -139,17 +139,71 @@ export interface PullProgress {
   error?: string
 }
 
-export interface SystemInfo {
-  cpuPct: number
+// ─── sistema (espelho de src/main/metrics.ts) ───────────────────────────────
+
+export interface CpuInfo {
+  /** modelo do processador (sysctl no macOS, os.cpus() nos demais) */
+  model: string
   cores: number
-  load: [number, number, number]
-  memTotal: number
-  memUsed: number
-  diskTotal: number
-  diskFree: number
-  uptimeSec: number
+  /** uso total, 0–100 (diferença entre duas leituras de os.cpus()) */
+  pct: number
+  /** uso por núcleo, mesma janela de amostragem */
+  perCore: number[]
+  speedMhz?: number
+  /** janela real da amostragem, em ms */
+  sampleMs?: number
+}
+
+export interface MemInfo {
+  total: number
+  used: number
+  free: number
+  pct: number
+  /** 'vm_stat' | '/proc/meminfo' | 'os.freemem' — de onde veio o "usado" */
+  source: string
+}
+
+export interface VolumeInfo {
+  /** 'C:' no Windows, ponto de montagem no POSIX */
+  id: string
+  label?: string
+  fs?: string
+  total: number
+  used: number
+  free: number
+  pct: number
+}
+
+export interface GpuInfo {
+  name: string
+  /** uso 0–100; ausente quando a plataforma não expõe de forma barata */
+  pct?: number
+  vramUsed?: number
+  vramTotal?: number
+  /** 'nvidia-smi' | 'GPU Engine (engtype_3D)' | 'Win32_VideoController' | 'sysctl' */
+  source: string
+}
+
+export interface SystemInfo {
+  platform: string
   hostname: string
+  /** ex.: 'Windows 11 Pro 26200', 'macOS 15.1' */
   osVersion: string
+  osDetail?: string
+  uptimeSec: number
+  /** null no Windows (não existe load average) */
+  load: [number, number, number] | null
+  cpu: CpuInfo
+  mem: MemInfo
+  volumes: VolumeInfo[]
+  /** motivo de a lista estar incompleta (fallback para o volume do HOME) */
+  volumesError?: string
+  /** id do volume do sistema ('C:' / '/') */
+  primaryVolume?: string
+  gpus: GpuInfo[]
+  /** uso 3D somado, quando há vários adaptadores e não dá para atribuir */
+  gpu3dPct?: number
+  gpuError?: string
 }
 
 // ─── wrappers ───────────────────────────────────────────────────────────────
@@ -175,24 +229,9 @@ export const ops = {
 }
 
 // ─── formatação ─────────────────────────────────────────────────────────────
-export function fmtBytes(n: number | undefined | null): string {
-  if (n == null || !Number.isFinite(n)) return '—'
-  const u = ['B', 'KB', 'MB', 'GB', 'TB']
-  let i = 0
-  let v = n
-  while (v >= 1024 && i < u.length - 1) {
-    v /= 1024
-    i++
-  }
-  return `${v >= 100 || i === 0 ? v.toFixed(0) : v.toFixed(1)} ${u[i]}`
-}
-
-export function fmtUptime(sec: number): string {
-  const d = Math.floor(sec / 86400)
-  const h = Math.floor((sec % 86400) / 3600)
-  const m = Math.floor((sec % 3600) / 60)
-  return d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : `${m}m`
-}
+// fmtBytes/fmtUptime moram em lib/fmt.ts (puro, sem IPC) para que módulos
+// testáveis em node:test possam usá-los sem arrastar o IPC junto.
+export { fmtBytes, fmtUptime } from './fmt'
 
 export function errMsg(e: unknown): string {
   const m = e instanceof Error ? e.message : String(e)

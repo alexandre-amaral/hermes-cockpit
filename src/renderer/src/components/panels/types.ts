@@ -81,17 +81,14 @@ export interface QuotaJanela {
   reset?: string | null
 }
 
+// Formato do plugin cockpit. A conversão para o modelo de cota do app está em
+// src/renderer/src/lib/quota-model.ts (`providersFromPlugin`), que é a única
+// coisa que lê isto hoje.
 export interface QuotaProvedor {
   nome?: string
   plano?: string
   janelas?: QuotaJanela[]
   aviso?: string
-  /** Custo estimado a partir de logs de tokens — NÃO é cota em créditos, salvo `unidade: 'creditos'`. */
-  usd?: number
-  /** Unidade da cota/consumo. Ausente = 'tokens'. Só 'creditos' autoriza exibir US$. */
-  unidade?: 'tokens' | 'creditos'
-  tokens_in?: number
-  tokens_out?: number
 }
 
 export interface Quota {
@@ -142,85 +139,9 @@ export const API = {
   inbox: '/api/plugins/cockpit/inbox',
 } as const
 
-/** Maior uso (%) entre as janelas de um provedor, ou null se não houver. */
-export function maxPct(p: QuotaProvedor): number | null {
-  const pcts = (p.janelas ?? []).map((j) => j.pct).filter((n): n is number => typeof n === 'number')
-  return pcts.length ? Math.max(...pcts) : null
-}
-
-/** Janela de uso com pct válido; as sem pct ficam de fora (nada é inventado). */
-export function quotaWindows(p: QuotaProvedor): Array<QuotaJanela & { pct: number; label: string }> {
-  return (p.janelas ?? [])
-    .filter((j): j is QuotaJanela & { pct: number } => typeof j.pct === 'number' && Number.isFinite(j.pct))
-    .map((j) => ({ ...j, label: (j.nome ?? '').trim() || 'janela' }))
-}
-
-/** Janela mais cheia de um provedor (para tom/alerta), ou null. */
-export function worstWindow(p: QuotaProvedor) {
-  const ws = quotaWindows(p)
-  return ws.length ? ws.reduce((a, b) => (b.pct > a.pct ? b : a)) : null
-}
-
-function parseReset(reset: string | number | null | undefined): Date | null {
-  if (reset == null || reset === '') return null
-  let d: Date
-  if (typeof reset === 'number') d = new Date(reset < 1e12 ? reset * 1000 : reset)
-  else if (/^\d{9,13}$/.test(reset.trim())) {
-    const n = Number(reset)
-    d = new Date(n < 1e12 ? n * 1000 : n)
-  } else d = new Date(reset)
-  return Number.isNaN(d.getTime()) ? null : d
-}
-
-/**
- * Reset legível: `short` ("em 2h13", "em 3d 4h", "agora") e `full` (data local
- * completa para tooltip). Valor não interpretável vira o texto original; ausente = null.
- */
-export function fmtReset(reset: string | number | null | undefined, now = Date.now()): { short: string; full: string } | null {
-  if (reset == null || reset === '') return null
-  const d = parseReset(reset)
-  if (!d) return { short: String(reset), full: String(reset) }
-  const full = d.toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
-  const mins = Math.round((d.getTime() - now) / 60_000)
-  if (mins <= 0) return { short: 'reset já passou', full }
-  const days = Math.floor(mins / 1440)
-  const hours = Math.floor((mins % 1440) / 60)
-  const m = mins % 60
-  const short = days > 0 ? `em ${days}d ${hours}h` : hours > 0 ? `em ${hours}h${String(m).padStart(2, '0')}` : `em ${m}min`
-  return { short, full }
-}
-
 /** Tokens compactos: 999, 12k, 2.5M. */
 export function fmtTokens(n: number): string {
   if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`
   if (n >= 1e3) return `${(n / 1e3).toFixed(0)}k`
   return String(n)
-}
-
-const isNum = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n)
-
-export interface ProviderUsage {
-  kind: 'tokens' | 'creditos' | 'none'
-  /** texto pronto ("12k tokens" / "US$ 4.50"); null quando não há consumo informado */
-  text: string | null
-}
-
-/** Consumo mensal do provedor: tokens por padrão; US$ somente com unidade 'creditos' e usd numérico. */
-export function providerUsage(p: Pick<QuotaProvedor, 'unidade' | 'usd' | 'tokens_in' | 'tokens_out'>): ProviderUsage {
-  if (p.unidade === 'creditos' && isNum(p.usd)) return { kind: 'creditos', text: `US$ ${p.usd.toFixed(2)}` }
-  if (isNum(p.tokens_in) || isNum(p.tokens_out)) {
-    return { kind: 'tokens', text: `${fmtTokens((isNum(p.tokens_in) ? p.tokens_in : 0) + (isNum(p.tokens_out) ? p.tokens_out : 0))} tokens` }
-  }
-  return { kind: 'none', text: null }
-}
-
-/** Total de tokens (in+out) entre provedores; null se nenhum informou tokens. */
-export function totalTokens(provs: QuotaProvedor[] | undefined): number | null {
-  let total = 0
-  let any = false
-  for (const p of provs ?? []) {
-    if (isNum(p.tokens_in)) (total += p.tokens_in), (any = true)
-    if (isNum(p.tokens_out)) (total += p.tokens_out), (any = true)
-  }
-  return any ? total : null
 }

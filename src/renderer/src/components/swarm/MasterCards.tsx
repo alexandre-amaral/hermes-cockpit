@@ -34,7 +34,7 @@ export function Column({
   kicker: string
   title: string
   count: number
-  tone?: 'phos' | 'amber' | 'cyanic' | 'neutral'
+  tone?: 'phos' | 'amber' | 'warn' | 'cyanic' | 'neutral'
   /** destaque (ex.: há algo esperando o usuário) */
   hot?: boolean
   aside?: ReactNode
@@ -43,6 +43,7 @@ export function Column({
   const t = {
     phos: 'text-phos',
     amber: 'text-amber',
+    warn: 'text-warn',
     cyanic: 'text-cyanic',
     neutral: 'text-dim',
   }[tone]
@@ -50,7 +51,7 @@ export function Column({
     <section
       className={cx(
         'hc-card flex min-h-[220px] min-w-0 flex-col overflow-hidden transition-[border-color] duration-[var(--hc-dur-3)]',
-        hot && 'hc-breathe border-amber/45',
+        hot && 'hc-breathe border-[color-mix(in_srgb,var(--color-warn)_45%,transparent)]',
       )}
     >
       <header className="flex items-end gap-2 border-b border-edge/80 px-4 pb-2 pt-3">
@@ -110,7 +111,7 @@ export const LiveRunCard = memo(function LiveRunCard({
       onClick={onOpen}
       className={cx(
         'hc-card hc-card-hover group block w-full min-w-0 px-3 py-2.5 text-left',
-        waiting ? 'border-amber/50' : 'border-phos/25',
+        waiting ? 'border-[color-mix(in_srgb,var(--color-warn)_50%,transparent)]' : 'border-phos/25',
       )}
     >
       <span className="flex min-w-0 items-center gap-2">
@@ -172,7 +173,7 @@ export function FinishedRow({ run, now, onOpen, onRetried }: { run: RunMeta; now
   const ok = run.status === 'done'
   const summary = ok ? run.resultText?.split('\n').find((l) => l.trim()) : run.error
   return (
-    <div className="group relative min-w-0 rounded-md border border-edge/70 bg-panel/50 transition-colors hover:border-edge2 hover:bg-panel2/60">
+    <div className="group relative min-w-0 rounded-md border border-edge/70 bg-panel/50 transition-colors hover:border-edge2 hover:bg-hover/60">
       <button type="button" onClick={onOpen} className="block w-full min-w-0 px-3 py-2 text-left">
         <span className="flex min-w-0 items-center gap-2">
           <span className={cx('h-1.5 w-1.5 shrink-0 rounded-full', STATUS_TONE[run.status].bg)} />
@@ -260,7 +261,7 @@ export function LogFeed({ entries, onOpen }: { entries: LogEntry[]; onOpen: (run
     <ol className="hc-stagger relative ml-1.5 border-l border-edge2/70">
       {entries.map((e) => (
         <li key={`${e.runId}-${e.at}-${e.glyph}`} className="relative">
-          <button type="button" onClick={() => onOpen(e.runId)} className="flex w-full min-w-0 items-baseline gap-2 rounded py-0.5 pl-3 pr-1 text-left hover:bg-panel2/50">
+          <button type="button" onClick={() => onOpen(e.runId)} className="flex w-full min-w-0 items-baseline gap-2 rounded py-0.5 pl-3 pr-1 text-left hover:bg-hover/50">
             <span className={cx('absolute -left-[4.5px] top-[7px] h-2 w-2 rounded-full border border-void', e.dot)} aria-hidden />
             <span className="shrink-0 font-mono text-[10px] tabular-nums text-faint">
               {new Date(e.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}

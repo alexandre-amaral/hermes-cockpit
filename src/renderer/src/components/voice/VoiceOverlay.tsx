@@ -13,6 +13,7 @@ import {
 import { api, invoke } from '../../lib/ipc'
 import { toast } from '../../lib/toast'
 import { botTitle } from '../../lib/bots'
+import { HOST_LABEL, HOST_THIS } from '../../lib/platform'
 import {
   DEFAULT_VAD,
   EnergyVad,
@@ -45,7 +46,7 @@ import { MacLivePanel, type AgentAction } from './MacLivePanel'
 // Motor: GPT-Live (WebRTC, delegação ao Hermes) quando o profile do bot selecionou
 // voice_chat_mode=gpt-live e há chave; senão turno a turno (gravar → transcrever →
 // prompt.submit no Bot Chat → fala por speak-stream/speak). Ver lib/voice.ts.
-// Computer use: tool.* do RPC na sessão + screenshot do Mac enquanto o tool roda.
+// Computer use: tool.* do RPC na sessão + screenshot do host enquanto o tool roda.
 
 type Engine = 'live' | 'turnos'
 type ListenMode = 'continuo' | 'ptt'
@@ -65,7 +66,7 @@ const PHASE_LABEL: Record<OrbPhase, string> = {
   transcrevendo: 'transcrevendo',
   pensando: 'pensando',
   falando: 'falando',
-  agindo: 'agindo no Mac',
+  agindo: `agindo no ${HOST_LABEL}`,
   erro: 'erro',
 }
 
@@ -806,7 +807,7 @@ export function VoiceOverlay(props: { rpc: HermesRpc | null; bot: string | null;
               {speakReplies ? 'fala: on' : 'fala: off'}
             </Button>
           )}
-          <Button size="xs" variant="ghost" onClick={() => setPinned((v) => !v)} title="mostrar a tela do Mac">
+          <Button size="xs" variant="ghost" onClick={() => setPinned((v) => !v)} title={`mostrar a tela ${HOST_THIS}`}>
             {pinned ? 'tela fixada' : 'ver tela'}
           </Button>
           <Button size="xs" variant="ghost" onClick={onClose} title="fechar (Esc)">

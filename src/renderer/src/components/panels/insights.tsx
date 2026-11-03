@@ -2,13 +2,15 @@ import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../../lib/ipc'
 import { agendaPath, inSpace, spaceOfAccount, spaceOfBot, spaceOfPath, useSpace, type ItemSpace } from '../../lib/space'
+import { useQuota } from '../../lib/quota'
+import { fmtResetParts, pctTone, TONE_VAR } from '../../lib/quota-model'
 import { useNow, useSwarm, type RunMeta } from '../../lib/swarm'
 import { cx } from '../ui/cx'
 import { CountUp, Gauge, Sparkline } from '../ui/Viz'
 import { PanelFrame } from './PanelFrame'
 import { usePluginSource } from './source'
 import { agendaFonte, agendaPartialError, type WidgetProps } from './widgets'
-import { API, CALENDAR_COLORS, calendarColor, fmtReset, fmtTokens, providerUsage, quotaWindows, totalTokens, type Agenda, type AgendaEvent, type CronJob, type Quota } from './types'
+import { API, CALENDAR_COLORS, calendarColor, fmtTokens, type Agenda, type AgendaEvent, type CronJob } from './types'
 
 // Widgets v3 do registry: agenda da semana multi-conta, próximos crons,
 // atividade do swarm e gauges de cota. Todos filtram pelo espaço ativo e
@@ -360,39 +362,53 @@ function ProviderGauges({ nome, sub, children }: { nome?: string; sub?: string; 
   )
 }
 
+/** Gauges por provedor: 5 horas, semanal e as janelas extras. */
 export function QuotaGaugesWidget({ refreshMs }: WidgetProps) {
-  const quota = usePluginSource<Quota>(API.quota, refreshMs)
-  const q = quota.data
-  const provs = q?.provedores ?? []
-  const total = totalTokens(provs)
+  const q = useQuota(refreshMs || 60_000)
+  const now = useNow(30_000)
   return (
     <PanelFrame
       titulo="Cota"
       icon="gauge"
-      fonte={q?.mes ? `mês ${q.mes}` : '/quota'}
-      error={quota.error}
-      loading={quota.loading}
-      empty={!quota.loading && !q}
-      emptyText="cota indisponível"
-      onRefresh={quota.refresh}
+      fonte={q.providers.length === 1 ? q.providers[0].source : 'provedores locais'}
+      error={q.error}
+      loading={q.loading}
+      empty={!q.loading && q.providers.length === 0}
+      emptyText={q.error ? 'cota indisponível' : 'nenhum provedor de IA autenticado nesta máquina'}
+      onRefresh={q.refresh}
     >
-      {q && (
+      {q.providers.length > 0 && (
         <div className="hc-stagger flex flex-wrap items-start gap-x-3 gap-y-2">
-          {total != null && <Gauge pct={null} size={60} label="tokens" sub={fmtTokens(total)} />}
-          {provs.map((p, i) => {
-            const ws = quotaWindows(p)
-            const usd = providerUsage(p).text ?? undefined
-            if (ws.length === 0)
+          {q.providers.map((p) => {
+            const sub = [p.plan, p.error ? 'erro' : null].filter(Boolean).join(' · ') || undefined
+            if (p.error) {
               return (
-                <ProviderGauges key={`${p.nome}-${i}`} nome={p.nome}>
-                  <Gauge pct={null} size={60} label="mês" sub={usd ?? p.aviso ?? 'sem janela'} />
+                <ProviderGauges key={p.provider} nome={p.label} sub={p.plan ?? undefined}>
+                  <Gauge pct={null} size={60} label="erro" sub={p.error.slice(0, 40)} tone="var(--color-alert)" />
                 </ProviderGauges>
               )
+            }
+            if (p.windows.length === 0) {
+              return (
+                <ProviderGauges key={p.provider} nome={p.label} sub={sub}>
+                  <Gauge pct={null} size={60} label="cota" sub={p.note ? 'sem janela' : 'sem dado'} />
+                </ProviderGauges>
+              )
+            }
             return (
-              <ProviderGauges key={`${p.nome}-${i}`} nome={p.nome} sub={usd ? `mês ${usd}` : p.aviso}>
-                {ws.map((w, k) => {
-                  const r = fmtReset(w.reset)
-                  return <Gauge key={`${w.label}-${k}`} pct={w.pct} size={60} label={w.label} sub={r ? `reset ${r.short}` : undefined} />
+              <ProviderGauges key={p.provider} nome={p.label} sub={sub}>
+                {p.windows.map((w, k) => {
+                  const r = fmtResetParts(w.resetsAt, now)
+                  return (
+                    <Gauge
+                      key={`${w.kind}-${w.label}-${k}`}
+                      pct={w.usedPct}
+                      size={60}
+                      label={w.label}
+                      sub={r ? (w.kind === '5h' ? `em ${r.in}` : r.at) : undefined}
+                      tone={TONE_VAR[pctTone(w.usedPct)]}
+                    />
+                  )
                 })}
               </ProviderGauges>
             )

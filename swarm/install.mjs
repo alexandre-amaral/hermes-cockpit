@@ -5,14 +5,27 @@
 // Idempotente: rodar de novo só atualiza os arquivos e a entrada claude_swarm.
 //   node swarm/install.mjs [--profiles chief,atlas] [--no-profiles]
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { BIN_DIRS, IS_WIN, findBin, hermesHome, hermesToolDir } from './lib/platform.mjs'
 import { BIN_DIR, HOME, STATE_DIR, ensureDirs } from './lib/state.mjs'
 
+export { hermesHome }
+
 const SRC = dirname(fileURLToPath(import.meta.url))
-const DEFAULT_PROFILES = ['chief', 'mercurio', 'atlas', 'hefesto', 'kairos']
 const BACKUP_SUFFIX = '.bak-20261101'
 const ENTRY = 'claude_swarm'
+
+/** Profiles que existem de fato (têm config.yaml) na raiz dada, em ordem. */
+export function discoverProfiles(profilesDir, read = readdirSync, exists = existsSync) {
+  try {
+    return read(profilesDir)
+      .filter((name) => !name.startsWith('.') && exists(join(profilesDir, name, 'config.yaml')))
+      .sort()
+  } catch {
+    return [] // raiz sem profiles/ (Hermes não instalado ou em outro lugar)
+  }
+}
 
 function copyTree(src, dst) {
   mkdirSync(dst, { recursive: true })
@@ -35,7 +48,13 @@ function copyTree(src, dst) {
 }
 
 function nodeBin() {
-  // Caminho estável preferido (symlink do usuário), depois o node atual.
+  // Caminho estável preferido, depois o node atual. No Windows o node do Hermes
+  // (tools/node-*) é o mais estável; findBin cuida do .exe.
+  if (IS_WIN) {
+    const tool = hermesToolDir('node-', 'node.exe')
+    if (tool) return tool
+    return findBin('node', BIN_DIRS) ?? process.execPath
+  }
   for (const c of [join(HOME, '.local', 'bin', 'node'), '/opt/homebrew/bin/node', '/usr/local/bin/node']) {
     if (existsSync(c)) return c
   }
@@ -98,11 +117,14 @@ export function upsertMcpEntry(text, block) {
 function main() {
   const argv = process.argv.slice(2)
   const pIdx = argv.indexOf('--profiles')
+  const profilesDir = join(hermesHome(), 'profiles')
+  // Sem --profiles: registra nos profiles que existem de fato (os nomes variam
+  // por instalação; uma lista fixa só acertaria a do macOS do Alexandre).
   const profiles = argv.includes('--no-profiles')
     ? []
     : pIdx !== -1
       ? String(argv[pIdx + 1] || '').split(',').filter(Boolean)
-      : DEFAULT_PROFILES
+      : discoverProfiles(profilesDir)
 
   const copied = copyTree(SRC, BIN_DIR)
   ensureDirs()
@@ -111,9 +133,10 @@ function main() {
   console.log(`swarm-bin: ${BIN_DIR} (${copied} arquivo(s) atualizado(s))`)
   console.log(`estado:    ${STATE_DIR}`)
   console.log(`node:      ${node}`)
+  console.log(`profiles:  ${profilesDir}${profiles.length ? ` (${profiles.join(', ')})` : ' — nenhum encontrado'}`)
 
   for (const p of profiles) {
-    const cfg = join(HOME, '.hermes', 'profiles', p, 'config.yaml')
+    const cfg = join(profilesDir, p, 'config.yaml')
     if (!existsSync(cfg)) {
       console.log(`profile ${p}: config.yaml ausente — pulado`)
       continue
@@ -130,4 +153,11 @@ function main() {
   }
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) main()
+// Rodado direto (e não importado)? No Windows o drive pode vir com caixa
+// diferente em argv[1] e import.meta.url — compara normalizado, senão o
+// install virava um no-op silencioso.
+const asEntry = (a, b) => {
+  const n = (x) => (IS_WIN ? resolve(x).toLowerCase() : resolve(x))
+  return !!a && !!b && n(a) === n(b)
+}
+if (asEntry(process.argv[1], fileURLToPath(import.meta.url))) main()

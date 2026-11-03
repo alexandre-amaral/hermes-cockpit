@@ -261,11 +261,11 @@ export function ModelPicker(props: Props) {
             onClick={() => load(true)}
             disabled={refreshing}
             title="recarregar catálogo dos providers"
-            className="ml-auto rounded px-1.5 text-[11px] text-faint hover:bg-panel2 hover:text-ink disabled:opacity-50"
+            className="ml-auto rounded px-1.5 text-[11px] text-faint hover:bg-hover hover:text-ink disabled:opacity-50"
           >
             {refreshing ? '…' : '↻'}
           </button>
-          <button onClick={onClose} className="rounded px-1.5 text-faint hover:bg-panel2 hover:text-ink" aria-label="fechar">
+          <button onClick={onClose} className="rounded px-1.5 text-faint hover:bg-hover hover:text-ink" aria-label="fechar">
             ✕
           </button>
         </div>
@@ -317,7 +317,7 @@ export function ModelPicker(props: Props) {
                   : `grava no config.yaml do profile ${profile} — vale para chats novos e para o Bot Chat`
               }
               className={`px-2 py-1 transition-colors disabled:opacity-40 ${
-                scope === s ? 'bg-amber font-semibold text-void' : 'text-dim hover:bg-panel2 hover:text-ink'
+                scope === s ? 'bg-amber font-semibold text-void' : 'text-dim hover:bg-hover hover:text-ink'
               }`}
             >
               {s === 'chat' ? 'este chat' : 'padrão do bot'}
@@ -380,7 +380,7 @@ export function ModelPicker(props: Props) {
               <span className="label text-dim">{g.provider.name || g.provider.slug}</span>
               <Badge tone={g.local ? 'phos' : 'cyan'}>{g.local ? 'local' : 'cloud'}</Badge>
               {g.provider.free_tier && <Badge tone="phos">free tier</Badge>}
-              {g.provider.warning && <span className="truncate text-[10.5px] text-amber" title={g.provider.warning}>{g.provider.warning}</span>}
+              {g.provider.warning && <span className="truncate text-[10.5px] text-warn" title={g.provider.warning}>{g.provider.warning}</span>}
               <span className="ml-auto text-[10px] text-faint">
                 {g.entries.length}
                 {g.provider.total_models && g.provider.total_models > g.provider.models.length ? `/${g.provider.total_models}` : ''}
@@ -405,7 +405,7 @@ export function ModelPicker(props: Props) {
                   onMouseEnter={() => setSel(i)}
                   onClick={() => void apply(e)}
                   className={`flex w-full min-w-0 items-center gap-2 px-3 py-[3px] text-left text-[12px] transition-colors ${e.unavailable ? 'disabled:cursor-not-allowed' : 'disabled:cursor-wait'} ${
-                    active ? 'bg-panel2' : ''
+                    active ? 'bg-sel' : ''
                   } ${e.current ? 'text-amber' : e.unavailable ? 'text-faint' : 'text-ink'}`}
                 >
                   <span className={`w-2 shrink-0 text-center text-[10px] ${active ? 'text-amber' : 'text-transparent'}`}>›</span>

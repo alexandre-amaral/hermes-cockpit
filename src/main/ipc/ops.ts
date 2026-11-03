@@ -1,5 +1,6 @@
-// Domínio "ops" — operações do Mac: modelos (Ollama), portas, processos/aplicações,
-// projetos/repos, containers, screenshot e sistema.
+// Domínio "ops" — operações do host (macOS, Windows, Linux): modelos (Ollama),
+// portas, processos/aplicações, projetos/repos, containers, screenshot e
+// sistema (CPU/RAM/volumes/GPU, em ../metrics.ts).
 //
 // Regras: só execFile (nunca shell com string do usuário), timeout em tudo,
 // argumentos validados (pid inteiro, ids/nomes por regex, caminhos absolutos
@@ -7,10 +8,11 @@
 
 import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { readdir, realpath, stat, statfs } from 'node:fs/promises'
-import { cpus, freemem, homedir, hostname, loadavg, release as osRelease, totalmem, uptime } from 'node:os'
+import { readdir, realpath, stat } from 'node:fs/promises'
+import { homedir } from 'node:os'
 import { basename, delimiter, isAbsolute, join, normalize } from 'node:path'
 import { extraBinDirs, findExecutable, IS_MAC, IS_WIN, isInside } from '../platform'
+import { systemInfo } from '../metrics.ts'
 import { app, desktopCapturer, screen, shell, systemPreferences } from 'electron'
 import type {
   AppRow,
@@ -39,9 +41,13 @@ import { broadcast, handle } from './index'
 const HOME = homedir()
 const BIN_DIRS = IS_WIN ? extraBinDirs() : [...extraBinDirs(), '/usr/bin', '/bin', '/usr/sbin', '/sbin']
 
-/** Features baseadas em ps/lsof/osascript: sem equivalente validado no Windows. */
+/**
+ * Features baseadas em ps/lsof/osascript: sem equivalente validado no Windows.
+ * A mensagem começa com "indisponível" de propósito — a UI (ErrorState) trata
+ * esse prefixo como estado neutro, não como falha.
+ */
 function needPosix(feature: string): void {
-  if (IS_WIN) throw new Error(`${feature} indisponível no Windows nesta versão (depende de ps/lsof/osascript do macOS)`)
+  if (IS_WIN) throw new Error(`indisponível no Windows: ${feature} depende de ps/lsof/osascript (POSIX/macOS)`)
 }
 const OLLAMA = 'http://127.0.0.1:11434'
 
@@ -767,58 +773,12 @@ async function screenshot(): Promise<Screenshot> {
   return { dataUrl: `data:image/jpeg;base64,${src.thumbnail.toJPEG(85).toString('base64')}` }
 }
 
-function cpuTimes(): { idle: number; total: number } {
-  let idle = 0
-  let total = 0
-  for (const c of cpus()) {
-    const t = c.times
-    idle += t.idle
-    total += t.user + t.nice + t.sys + t.idle + t.irq
-  }
-  return { idle, total }
-}
-
-async function memUsed(): Promise<number> {
-  // freemem() no macOS ignora cache/inativa — vm_stat dá a visão do Monitor de Atividade.
-  if (!IS_MAC) return totalmem() - freemem()
-  const r = await run('/usr/bin/vm_stat', [], { timeout: 3000 })
-  if (r.failed || r.code !== 0) return totalmem() - freemem()
-  const page = Number(r.stdout.match(/page size of (\d+)/)?.[1] ?? 16384)
-  const get = (k: string): number => Number(r.stdout.match(new RegExp(`${k}:\\s+(\\d+)`))?.[1] ?? 0)
-  const used = (get('Pages active') + get('Pages wired down') + get('Pages occupied by compressor')) * page
-  return used > 0 ? used : totalmem() - freemem()
-}
-
-async function system(): Promise<SystemInfo> {
-  const a = cpuTimes()
-  await new Promise((r) => setTimeout(r, 250))
-  const b = cpuTimes()
-  const dt = b.total - a.total
-  const cpuPct = dt > 0 ? Math.max(0, Math.min(100, (1 - (b.idle - a.idle) / dt) * 100)) : 0
-  let diskTotal = 0
-  let diskFree = 0
-  try {
-    const s = await statfs(HOME)
-    diskTotal = s.blocks * s.bsize
-    diskFree = s.bavail * s.bsize
-  } catch {
-    /* sem statfs: zeros (UI mostra —) */
-  }
-  const sw = IS_MAC ? await run('/usr/bin/sw_vers', ['-productVersion'], { timeout: 3000 }) : { stdout: '' }
-  const l = loadavg()
-  return {
-    cpuPct: Math.round(cpuPct * 10) / 10,
-    cores: cpus().length,
-    load: [l[0], l[1], l[2]],
-    memTotal: totalmem(),
-    memUsed: await memUsed(),
-    diskTotal,
-    diskFree,
-    uptimeSec: uptime(),
-    hostname: hostname(),
-    osVersion: sw.stdout.trim() ? `macOS ${sw.stdout.trim()}` : IS_WIN ? `Windows ${osRelease()}` : process.platform,
-  }
-}
+/**
+ * Sistema: CPU (modelo, núcleos, uso total e por núcleo), RAM, volumes, GPU,
+ * uptime e nome do SO. A coleta multiplataforma vive em ../metrics.ts (sem
+ * Electron, com throttle e cache próprios).
+ */
+const system = (): Promise<SystemInfo> => systemInfo(HOME)
 
 // ─── registro ───────────────────────────────────────────────────────────────
 

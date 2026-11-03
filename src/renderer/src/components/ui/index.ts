@@ -11,6 +11,7 @@
 //   EmptyState    vazio/erro/indisponível honesto (tone neutral|warn|error, action, art = ilustração SVG)
 //   Icon          ícones SVG inline consistentes: <Icon name="chat" size={14}/> (lista em ICON_NAMES)
 //   CountUp       número animado (hc-count) · Gauge radial · Sparkline SVG (ui/Viz)
+//   RadialMeter   donut de progresso (0% = só trilho, 100% = anel fechado) · RadialStat = cartão ícone+donut+detalhe
 //   Tooltip       hover/foco com atraso; para o trivial use `title`
 //   ConfirmButton 2 cliques com contagem regressiva (destrutivos; nunca window.confirm)
 //   Toaster       montado pelo App; dispare com toast() de lib/toast.ts
@@ -33,6 +34,7 @@ export { cx } from './cx'
 export { EmptyArtSvg, EmptyState, type EmptyArt } from './EmptyState'
 export { ICON_NAMES, Icon, type IconName } from './Icon'
 export { CountUp, Gauge, Sparkline } from './Viz'
+export { RadialMeter, RadialStat, type RadialMeterProps } from './RadialMeter'
 export { IconButton, type IconButtonProps } from './IconButton'
 export { Kbd } from './Kbd'
 export { Skeleton, SkeletonLines } from './Skeleton'

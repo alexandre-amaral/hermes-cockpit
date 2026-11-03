@@ -132,7 +132,7 @@ export function MasterView({
         </div>
         <dl className="grid grid-cols-4 gap-2">
           <Stat label="em campo" value={inField} tone={inField ? 'text-phos' : 'text-faint'} />
-          <Stat label="com você" value={needYou} tone={needYou ? 'text-amber' : 'text-faint'} />
+          <Stat label="com você" value={needYou} tone={needYou ? 'text-warn' : 'text-faint'} />
           <Stat label="entregues 24h" value={doneToday} tone={doneToday ? 'text-cyanic' : 'text-faint'} />
           <Stat
             label="tokens 24h"
@@ -181,7 +181,7 @@ export function MasterView({
                 </span>
                 {c.label}
                 {c.active > 0 && <span className="font-mono text-[10px] text-phos">{c.active}▸</span>}
-                {c.waiting > 0 && <span className="font-mono text-[10px] text-amber">{c.waiting}!</span>}
+                {c.waiting > 0 && <span className="font-mono text-[10px] text-warn">{c.waiting}!</span>}
                 {!c.active && !c.waiting && <span className="font-mono text-[10px] text-faint">{c.today || '·'}</span>}
               </button>
             )
@@ -226,11 +226,11 @@ export function MasterView({
           kicker="precisa de você"
           title={needYou ? 'Sua vez' : 'Nada pendente'}
           count={needYou}
-          tone="amber"
+          tone="warn"
           hot={needYou > 0}
           aside={
             deleg.status?.paused ? (
-              <span className="text-amber">
+              <span className="text-warn">
                 spawns de subagents Hermes pausados ·{' '}
                 <button
                   type="button"

@@ -291,7 +291,7 @@ export function CommandPalette({
                       onClick={() => exec(it)}
                       className={cx(
                         'relative mx-1.5 flex w-[calc(100%-12px)] items-center gap-3 rounded-md px-2.5 py-1.5 text-left text-[12px] transition-colors duration-[var(--hc-dur-1)]',
-                        on ? 'bg-panel2 text-ink' : 'text-dim',
+                        on ? 'bg-sel text-sel-ink' : 'text-dim',
                       )}
                     >
                       {on && <span aria-hidden className="absolute inset-y-1.5 left-0 w-[2px] rounded bg-amber" />}

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import { api, hasMain, invoke } from './ipc'
 import { toast } from './toast'
 
-// Devtools do dock (Terminal, Diff · Git, Arquivos, Preview, Tela Mac).
+// Devtools do dock (Terminal, Diff · Git, Arquivos, Preview, Tela).
 // Tudo aqui é leitura de fontes reais: REST do serve (/api/fs/*, /api/git/*)
 // via proxy do main, e IPC do domínio ops (ops:repos, ops:ports, ...). Falha
 // de fonte vira estado de erro no painel — nunca dado inventado.

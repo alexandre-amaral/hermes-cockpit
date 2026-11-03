@@ -29,7 +29,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
           ? 'border-space/50 bg-space/10 text-space shadow-[0_0_10px_-3px_var(--color-space)]'
           : tone === 'danger'
             ? 'border-transparent text-faint hover:border-alert/40 hover:bg-alert/10 hover:text-alert'
-            : 'border-transparent text-faint hover:border-edge2 hover:bg-panel2 hover:text-ink',
+            : 'border-transparent text-faint hover:border-edge2 hover:bg-hover hover:text-ink',
         className,
       )}
       {...rest}

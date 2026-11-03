@@ -60,7 +60,7 @@ export interface HermesBridge {
   flushStorage?(): void
   /** caminho local de um File (drop/seletor); '' quando indisponível */
   pathForFile?(file: File): string
-  /** IPC de domínio: canais `swarm:*`, `ops:*`, `storage:*`, `transcriber:*`. */
+  /** IPC de domínio: canais `swarm:*`, `ops:*`, `storage:*`, `transcriber:*`, `quota:*`. */
   invoke(channel: string, ...args: unknown[]): Promise<unknown>
   /** Eventos main→renderer dos mesmos domínios; retorna unsubscribe. */
   on(channel: string, fn: (payload: unknown) => void): () => void

@@ -225,7 +225,7 @@ export function SwarmView({ rpc }: { rpc: HermesRpc | null }) {
       label: 'Comando',
       icon: '◆',
       title: 'o que está acontecendo, o que precisa de você, o que terminou',
-      badge: s.approvals.length ? <Badge tone="amber" count={s.approvals.length} /> : undefined,
+      badge: s.approvals.length ? <Badge tone="warn" count={s.approvals.length} /> : undefined,
     },
     {
       id: 'runs',
@@ -338,7 +338,7 @@ export function SwarmView({ rpc }: { rpc: HermesRpc | null }) {
                 <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
                   {otherApprovals.length > 0 && (
                     <div className="mb-2 space-y-1.5">
-                      <div className="label px-1 text-amber">esperando você em outras runs</div>
+                      <div className="label px-1 text-warn">esperando você em outras runs</div>
                       {otherApprovals.map((a) => (
                         <SwarmApprovalCard key={a.id} approval={a} run={s.runs.find((r) => r.id === a.runId)} compact onSelectRun={pickRun} />
                       ))}
@@ -504,8 +504,8 @@ function RunRow({
       data-active={selected || undefined}
       className={cx(
         'hc-rail-item hc-rise mb-0.5 block w-full min-w-0 rounded px-2 py-1.5 text-left transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-amber',
-        selected ? 'bg-panel2 ring-1 ring-edge2' : 'hover:bg-panel2/60',
-        waiting && !selected && 'bg-amber/[0.05]',
+        selected ? 'bg-panel2 ring-1 ring-edge2' : 'hover:bg-hover/60',
+        waiting && !selected && 'bg-[color-mix(in_srgb,var(--color-warn)_5%,transparent)]',
         nested && 'pl-3',
       )}
     >
@@ -514,7 +514,7 @@ function RunRow({
         <span className="min-w-0 flex-1 truncate text-[11.5px] text-ink" title={r.task}>
           {r.title || r.task}
         </span>
-        {waiting && <span className="hc-pop shrink-0 rounded-full bg-amber px-1.5 text-[9px] font-semibold text-void">você</span>}
+        {waiting && <span className="hc-pop shrink-0 rounded-full bg-warn px-1.5 text-[9px] font-semibold text-void">você</span>}
         <span className="shrink-0 text-[10px] tabular-nums text-faint">{fmtDuration(runElapsedMs(r, now))}</span>
       </span>
       <FlowRail run={r} approvals={approvals} compact className="mt-1.5" />

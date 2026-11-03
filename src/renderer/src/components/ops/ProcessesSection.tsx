@@ -169,7 +169,7 @@ export function ProcessesSection({ onCount }: { onCount?: (n: number) => void })
             </thead>
             <tbody>
               {shown.map((p) => (
-                <tr key={p.pid} className="border-b border-edge/60 hover:bg-panel2/60">
+                <tr key={p.pid} className="border-b border-edge/60 hover:bg-hover/60">
                   <td className="px-2 py-1 text-right tabular-nums text-dim">{p.pid}</td>
                   <td className="px-2 py-1">
                     <div className="flex items-center gap-1.5">

@@ -565,7 +565,7 @@ export class SpeechOut {
     }
   }
 
-  /** speechSynthesis do macOS (último recurso, sempre sinalizado na UI). */
+  /** speechSynthesis do próprio SO (último recurso, sempre sinalizado na UI). */
   speakSystem(text: string): Promise<SpeechRoute | 'erro'> {
     if (typeof speechSynthesis === 'undefined') return Promise.resolve('erro')
     return new Promise((resolve) => {

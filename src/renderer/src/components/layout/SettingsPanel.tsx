@@ -80,7 +80,7 @@ export function SettingsPanel(p: Props) {
           <button
             type="button"
             onClick={p.onClose}
-            className="hc-press ml-auto flex h-6 w-6 items-center justify-center rounded text-faint hover:bg-panel2 hover:text-ink"
+            className="hc-press ml-auto flex h-6 w-6 items-center justify-center rounded text-faint hover:bg-hover hover:text-ink"
             aria-label="fechar"
           >
             <Icon name="close" size={12} />

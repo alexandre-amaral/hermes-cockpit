@@ -99,7 +99,7 @@ export function ContainersSection({ onCount }: { onCount?: (n: number) => void }
                   const running = c.state === 'running'
                   const b = busy === c.id
                   return (
-                    <tr key={c.id} className="border-b border-edge/60 hover:bg-panel2/60">
+                    <tr key={c.id} className="border-b border-edge/60 hover:bg-hover/60">
                       <td className="px-2 py-1">
                         <div className="text-ink">{c.name}</div>
                         <div className="text-[10px] text-faint">{c.id.slice(0, 12)}</div>

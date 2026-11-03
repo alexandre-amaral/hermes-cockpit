@@ -105,7 +105,7 @@ export function FlowRail({
           key={run.status}
           className={cx(
             'hc-pop ml-2 shrink-0 font-mono text-[9px] uppercase tracking-[0.04em]',
-            outcome ? OUTCOME_TONE[outcome].text : waiting ? 'text-amber' : 'text-phos',
+            outcome ? OUTCOME_TONE[outcome].text : waiting ? 'text-warn' : 'text-phos',
           )}
         >
           {outcome ? OUTCOME_LABEL[outcome] : FLOW_STEPS[f.index]?.label}

@@ -36,7 +36,7 @@ const ws = {
 }
 
 // Domínios de IPC do cockpit (espelho de DOMAINS em src/main/ipc/index.ts).
-const DOMAIN_RE = /^(swarm|ops|storage|transcriber|notion|flows):[\w.:-]+$/
+const DOMAIN_RE = /^(swarm|ops|storage|transcriber|notion|flows|quota):[\w.:-]+$/
 
 interface ApiInit {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'

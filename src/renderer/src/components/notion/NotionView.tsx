@@ -429,7 +429,7 @@ export function NotionView(props: { rpc: HermesRpc | null }) {
               ) : (
                 <TaskBoard statuses={schema?.statuses ?? []} tasks={visible} schema={schema} selectedId={selId} busyIds={busy} onSelect={(t) => setSelId(t.id === selId ? null : t.id)} onMove={move} />
               )}
-              {st.truncated && <div className="mt-2 text-[10px] text-amber">mostrando as primeiras 400 tarefas — refine os filtros</div>}
+              {st.truncated && <div className="mt-2 text-[10px] text-warn">mostrando as primeiras 400 tarefas — refine os filtros</div>}
             </div>
             {mode === 'quadro' && (
               <div className="border-t border-edge px-4 py-1.5">
@@ -473,7 +473,7 @@ function Stat({ n, label, tone, onClick }: { n: number; label: string; tone?: 'a
     </>
   )
   return onClick ? (
-    <button type="button" onClick={onClick} className="hc-press flex items-baseline gap-1.5 rounded px-0.5 hover:bg-panel2/60" title={`filtrar: ${label}`}>
+    <button type="button" onClick={onClick} className="hc-press flex items-baseline gap-1.5 rounded px-0.5 hover:bg-hover/60" title={`filtrar: ${label}`}>
       {body}
     </button>
   ) : (

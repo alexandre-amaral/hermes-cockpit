@@ -114,7 +114,7 @@ export function RunDiff({ cwd }: { cwd: string }) {
                   type="button"
                   onClick={() => setFile(f.path)}
                   className={`flex w-full items-baseline gap-2 px-3 py-1 text-left text-[11px] transition-colors ${
-                    file === f.path ? 'bg-panel2 text-ink' : 'text-dim hover:bg-panel2/60 hover:text-ink'
+                    file === f.path ? 'bg-panel2 text-ink' : 'text-dim hover:bg-hover/60 hover:text-ink'
                   }`}
                   title={f.path}
                 >

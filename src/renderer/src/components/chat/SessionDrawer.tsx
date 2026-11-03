@@ -296,10 +296,10 @@ export function SessionDrawer(props: Props) {
       <div className="flex items-center gap-2 border-b border-edge px-3 py-2">
         <span className="label">Sessões · {botTitle}</span>
         <span className="text-[10.5px] text-faint">{rows ? `${rows.length}` : ''}</span>
-        <button onClick={() => void load()} title="recarregar" className="ml-auto rounded px-1.5 text-[12px] text-faint hover:bg-panel2 hover:text-ink">
+        <button onClick={() => void load()} title="recarregar" className="ml-auto rounded px-1.5 text-[12px] text-faint hover:bg-hover hover:text-ink">
           ↻
         </button>
-        <button onClick={onClose} aria-label="fechar" className="rounded px-1.5 text-faint hover:bg-panel2 hover:text-ink">
+        <button onClick={onClose} aria-label="fechar" className="rounded px-1.5 text-faint hover:bg-hover hover:text-ink">
           ✕
         </button>
       </div>
@@ -351,7 +351,7 @@ export function SessionDrawer(props: Props) {
                 <div
                   key={r.id}
                   onClick={() => editing !== r.id && onOpen({ id: r.id, title: r.title })}
-                  className={`group relative cursor-pointer px-3 py-1.5 transition-colors hover:bg-panel2 ${isActive ? 'bg-panel2/70' : ''}`}
+                  className={`group relative cursor-pointer px-3 py-1.5 transition-colors hover:bg-hover ${isActive ? 'bg-[color-mix(in_srgb,var(--color-sel)_70%,transparent)]' : ''}`}
                 >
                   {isActive && <span className="absolute inset-y-1 left-0 w-0.5 rounded bg-amber" />}
                   {editing === r.id ? (

@@ -15,7 +15,7 @@ import {
   type FSWatcher,
 } from 'node:fs'
 import { homedir } from 'node:os'
-import { exeNames, extraBinDirs, IS_MAC, IS_WIN } from '../platform'
+import { exeNames, extraBinDirs, IS_MAC, IS_WIN, killPidTree, resolveHermesHome } from '../platform'
 import { delimiter, join } from 'node:path'
 import { broadcast, handle } from './index'
 import { withUsage, type TokenUsage } from '../../../swarm/lib/usage.mjs'
@@ -27,7 +27,9 @@ const RUNS_DIR = join(STATE_DIR, 'runs')
 const APPROVALS_DIR = join(STATE_DIR, 'approvals')
 const BIN_DIR = join(COCKPIT_DIR, 'swarm-bin')
 const CLI = join(BIN_DIR, 'cli.mjs')
-const PROFILES_DIR = join(HOME, '.hermes', 'profiles')
+// Os profiles não ficam sob ~/.hermes em toda plataforma (no Windows a raiz é
+// %LOCALAPPDATA%\hermes); mesma resolução que o swarm/install.mjs usa.
+const PROFILES_DIR = join(resolveHermesHome(), 'profiles')
 const BIN_DIRS = extraBinDirs()
 const NODE_CANDIDATES = BIN_DIRS.flatMap((d) => exeNames('node').map((n) => join(d, n)))
 
@@ -202,13 +204,23 @@ function decide(approvalId: string, decision: 'allow' | 'deny', reason?: string,
   writeJsonAtomic(file, next)
 }
 
-/** Pid ainda é o runner desta run? (após crash/reboot o pid pode ter sido reciclado). */
+/**
+ * Pid ainda é o runner desta run? (após crash/reboot o pid pode ter sido
+ * reciclado). Confirmar importa: cancel() derruba a ÁRVORE do pid, e acertar o
+ * processo errado mataria algo do usuário. POSIX: `ps -o args=`; Windows: não
+ * há `ps`, mas Win32_Process.CommandLine via powershell resolve (espelho de
+ * commandLineOf() em swarm/lib/platform.mjs).
+ */
 function isRunnerPid(pid: number, runId: string): boolean {
   if (!pidAlive(pid)) return false
-  // Sem `ps` no Windows: não dá para checar a linha de comando; confia no pid vivo.
-  if (IS_WIN) return true
   try {
-    const args = execFileSync('ps', ['-o', 'args=', '-p', String(pid)], { encoding: 'utf8', timeout: 5000 })
+    const args = IS_WIN
+      ? execFileSync(
+          join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
+          ['-NoProfile', '-NonInteractive', '-Command', `(Get-CimInstance Win32_Process -Filter "ProcessId=${Number(pid)}").CommandLine`],
+          { encoding: 'utf8', timeout: 20_000, windowsHide: true },
+        )
+      : execFileSync('ps', ['-o', 'args=', '-p', String(pid)], { encoding: 'utf8', timeout: 5000 })
     return args.includes('run.mjs') && args.includes(runId)
   } catch {
     return false
@@ -283,7 +295,16 @@ function cancel(runId: string): void {
   const m = readJson<RunMeta>(file)
   if (TERMINAL.has(m.status)) return
   if (m.pid && isRunnerPid(m.pid, runId)) {
-    process.kill(m.pid, 'SIGTERM') // runner mata o claude e grava cancelled
+    if (!IS_WIN) {
+      process.kill(m.pid, 'SIGTERM') // runner mata o claude e grava cancelled
+      return
+    }
+    // Windows não entrega SIGTERM: o handler do runner nunca roda. Derruba a
+    // árvore (runner + claude + netos) e grava a meta aqui — mesmo contrato do
+    // cancelRun() de swarm/lib/runs.mjs.
+    killPidTree(m.pid)
+    if (m.claudePid) killPidTree(m.claudePid)
+    writeJsonAtomic(file, { ...m, status: 'cancelled', endedAt: new Date().toISOString() })
     return
   }
   // Runner morto: ninguém mais escreve a meta.

@@ -821,7 +821,7 @@ export function ChatPane({ rpc, bot, connState }: Props) {
             onClick={() => setPickerOpen((v) => !v)}
             title={modelError ?? 'trocar modelo'}
             className={`flex min-w-0 max-w-[300px] items-center gap-1.5 rounded-l-md px-2 py-0.5 transition-colors disabled:opacity-50 ${
-              pickerOpen ? 'bg-panel2 text-ink' : 'text-dim hover:bg-panel2 hover:text-ink'
+              pickerOpen ? 'bg-panel2 text-ink' : 'text-dim hover:bg-hover hover:text-ink'
             }`}
           >
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber/80" />
@@ -840,7 +840,7 @@ export function ChatPane({ rpc, bot, connState }: Props) {
                 ? 'text-alert hover:bg-alert/10'
                 : approvalMode === 'smart'
                   ? 'text-phos hover:bg-phos/10'
-                  : 'text-faint hover:bg-panel2 hover:text-dim'
+                  : 'text-faint hover:bg-hover hover:text-dim'
             }`}
           >
             {approvalMode === 'off' ? '⚡ yolo' : approvalMode === 'smart' ? '◎ auto' : '◌ manual'}
@@ -851,7 +851,7 @@ export function ChatPane({ rpc, bot, connState }: Props) {
             aria-pressed={autoOn}
             title={autoOn ? 'AUTO global ligado (Hermes smart + swarm auto) — clique para desligar' : 'ligar AUTO global: Hermes smart + swarm --permission-mode auto'}
             className={`flex shrink-0 items-center gap-1 rounded-r-md border-l border-edge px-2 font-mono text-[10px] uppercase tracking-[0.14em] transition-colors ${
-              autoOn ? 'bg-phos/10 text-phos hc-glow-phos' : 'text-faint hover:bg-panel2 hover:text-dim'
+              autoOn ? 'bg-phos/10 text-phos hc-glow-phos' : 'text-faint hover:bg-hover hover:text-dim'
             }`}
           >
             <span className={`h-1.5 w-1.5 rounded-full ${autoOn ? 'hc-pulse-dot bg-phos' : 'bg-edge2'}`} />

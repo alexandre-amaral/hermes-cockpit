@@ -38,7 +38,7 @@ export function IndeterminateBar({ tone = 'bg-phos', className = '' }: { tone?: 
 /** Barra de status de uma run: indeterminada se ativa, cheia/colorida se terminou. */
 export function RunBar({ status, className = '' }: { status: RunStatus; className?: string }) {
   if (status === 'running') return <IndeterminateBar className={className} />
-  if (status === 'waiting_approval') return <IndeterminateBar tone="bg-amber" className={className} />
+  if (status === 'waiting_approval') return <IndeterminateBar tone="bg-warn" className={className} />
   const w = status === 'queued' ? 'w-[6%]' : 'w-full'
   return (
     <span className={`relative block h-[3px] overflow-hidden rounded-full bg-edge ${className}`}>

@@ -4,11 +4,13 @@
 import { execFileSync, spawn } from 'node:child_process'
 import { existsSync, mkdirSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { userInfo } from 'node:os'
-import { dirname, isAbsolute, join, resolve } from 'node:path'
+import { delimiter, dirname, isAbsolute, join, parse, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { BIN_DIRS, IS_WIN, commandLineOf, findBin, killTree, pathDirs, spawnSpec } from './platform.mjs'
 import {
   HOME,
   TERMINAL,
+  approvalPath,
   effective,
   ensureDirs,
   listApprovals,
@@ -17,8 +19,11 @@ import {
   newRunId,
   nowIso,
   pidAlive,
+  readJson,
   readMeta,
   runDir,
+  WORKTREES_DIR,
+  writeJsonAtomic,
   writeMeta,
   eventsPath,
   normalizePermissionMode,
@@ -28,21 +33,11 @@ import { runUsage } from './usage.mjs'
 const HERE = dirname(fileURLToPath(import.meta.url))
 export const RUNNER = join(HERE, '..', 'run.mjs')
 
-const BIN_DIRS = [join(HOME, '.local', 'bin'), '/opt/homebrew/bin', '/usr/local/bin', '/usr/bin']
-
 /** Binário por caminhos conhecidos (app empacotado e Hermes têm PATH mínimo). */
 export function resolveBin(name, envVar) {
   if (envVar && process.env[envVar] && existsSync(process.env[envVar])) return process.env[envVar]
-  for (const d of BIN_DIRS) {
-    const c = join(d, name)
-    if (existsSync(c)) return c
-  }
-  for (const d of (process.env.PATH || '').split(':')) {
-    if (!d) continue
-    const c = join(d, name)
-    if (existsSync(c)) return c
-  }
-  return null
+  // findBin tenta as extensões da plataforma (Windows: PATHEXT, .exe antes de .cmd).
+  return findBin(name, BIN_DIRS) ?? findBin(name, pathDirs())
 }
 
 export function expandPath(p) {
@@ -58,10 +53,22 @@ export function expandPath(p) {
 }
 
 // Raízes onde um agente nunca deve rodar (sem worktree ele trabalharia direto
-// nelas): HOME, '/', diretórios de sistema e de configuração/segredos.
-const SENSITIVE_EXACT = ['/', '/Users', '/Applications', '/Library', '/System', '/private', '/tmp', '/var', HOME]
-const SENSITIVE_TREES = ['/etc', '/usr', '/bin', '/sbin', '/System', '/Library', '/private/etc', '/opt/homebrew']
-const SENSITIVE_HOME = ['.ssh', '.gnupg', '.aws', '.config', '.kube', '.docker', '.claude', '.hermes', 'Library']
+// nelas): HOME, raiz do disco, diretórios de sistema e de configuração/segredos.
+const SENSITIVE_EXACT = IS_WIN
+  ? [HOME, join(HOME, '..'), process.env.PUBLIC, process.env.ProgramData, process.env.TEMP, process.env.TMP]
+  : ['/', '/Users', '/Applications', '/Library', '/System', '/private', '/tmp', '/var', HOME]
+const SENSITIVE_TREES = IS_WIN
+  ? [process.env.SystemRoot || 'C:\\Windows', process.env.ProgramFiles, process.env['ProgramFiles(x86)'], process.env.ProgramW6432, process.env.ProgramData]
+  : ['/etc', '/usr', '/bin', '/sbin', '/System', '/Library', '/private/etc', '/opt/homebrew']
+// No Windows os segredos do Hermes/Claude ficam em AppData, não em dotdirs.
+const SENSITIVE_HOME = ['.ssh', '.gnupg', '.aws', '.config', '.kube', '.docker', '.claude', '.hermes', 'Library', ...(IS_WIN ? ['AppData'] : [])]
+
+/** Chave comparável: separador da plataforma, case-insensitive no Windows, sem barra final. */
+function pathKey(s) {
+  let v = IS_WIN ? String(s).replace(/\//g, sep).toLowerCase() : String(s)
+  while (v.length > 1 && v.endsWith(sep)) v = v.slice(0, -1)
+  return v
+}
 
 function assertNotSensitive(p) {
   let real = p
@@ -77,9 +84,26 @@ function assertNotSensitive(p) {
       return HOME
     }
   })()
-  const under = (root) => real === root || real.startsWith(root.endsWith('/') ? root : root + '/')
-  const exact = [...SENSITIVE_EXACT, homeReal, '/private/tmp', '/private/var']
-  if (exact.includes(real)) throw new Error(`cwd recusado (raiz sensível): ${real}`)
+  const key = pathKey(real)
+  const under = (root) => {
+    if (!root) return false
+    const r = pathKey(root)
+    return key === r || key.startsWith(r.endsWith(sep) ? r : r + sep)
+  }
+  // Os worktrees do swarm são NOSSOS e ficam sob ~/.hermes/cockpit/worktrees —
+  // exatamente o cwd que sendRun()/claude_send reusa para continuar uma run.
+  // Sem esta exceção a regra de `.hermes` recusaria toda continuação.
+  let wtReal = WORKTREES_DIR
+  try {
+    wtReal = realpathSync(WORKTREES_DIR)
+  } catch {
+    /* ainda não criado */
+  }
+  const wtKey = pathKey(wtReal)
+  if (key !== wtKey && key.startsWith(wtKey.endsWith(sep) ? wtKey : wtKey + sep)) return
+  if (key === pathKey(parse(real).root)) throw new Error(`cwd recusado (raiz do disco): ${real}`)
+  const exact = [...SENSITIVE_EXACT, homeReal, '/private/tmp', '/private/var'].filter(Boolean).map(pathKey)
+  if (exact.includes(key)) throw new Error(`cwd recusado (raiz sensível): ${real}`)
   for (const t of SENSITIVE_TREES) if (under(t)) throw new Error(`cwd recusado (diretório de sistema): ${real}`)
   for (const h of SENSITIVE_HOME) if (under(join(homeReal, h))) throw new Error(`cwd recusado (config/segredos): ${real}`)
 }
@@ -95,6 +119,7 @@ function spawnRunner(runId) {
     detached: true,
     stdio: 'ignore',
     env: runnerEnv(),
+    windowsHide: true, // detached no Windows já é DETACHED_PROCESS; garante sem console
   })
   child.unref()
   return child.pid
@@ -106,7 +131,11 @@ export function runnerEnv() {
   for (const k of Object.keys(env)) {
     if (k === 'ELECTRON_RUN_AS_NODE' || k === 'CLAUDECODE' || k.startsWith('CLAUDE_CODE_')) delete env[k]
   }
-  env.PATH = [...BIN_DIRS, env.PATH || ''].join(':')
+  // No Windows a chave do PATH costuma ser "Path": atribuir env.PATH criaria uma
+  // SEGUNDA entrada e o filho ficaria com PATH ambíguo (git/npm somem).
+  const inherited = pathDirs(env)
+  for (const k of Object.keys(env)) if (k.toUpperCase() === 'PATH') delete env[k]
+  env.PATH = [...BIN_DIRS, ...inherited].join(delimiter)
   // Sem USER/LOGNAME o claude não acha a credencial no Keychain ("Not logged in").
   const user = userInfo().username
   if (!env.USER) env.USER = user
@@ -201,11 +230,21 @@ export function sendRun(runId, message, requestedBy) {
  */
 export function isRunnerPid(pid, runId) {
   if (!pid || !pidAlive(pid)) return false
-  try {
-    const args = execFileSync('ps', ['-o', 'args=', '-p', String(pid)], { encoding: 'utf8', timeout: 5000 })
-    return args.includes('run.mjs') && args.includes(runId)
-  } catch {
-    return false
+  // POSIX: `ps -o args=`; Windows: Win32_Process.CommandLine via powershell.
+  const args = commandLineOf(pid)
+  if (!args) return false // sem como confirmar: não sinaliza (o pid pode ter sido reciclado)
+  return args.includes('run.mjs') && args.includes(runId)
+}
+
+/** Nega as aprovações pendentes de uma run (quando ninguém mais vai decidir). */
+function denyPending(runId, reason) {
+  for (const a of listApprovals({ runId, status: 'pending' })) {
+    try {
+      const cur = readJson(approvalPath(a.id))
+      if (cur.status === 'pending') writeJsonAtomic(approvalPath(a.id), { ...cur, status: 'deny', decidedAt: nowIso(), reason })
+    } catch {
+      /* noop */
+    }
   }
 }
 
@@ -213,8 +252,19 @@ export function cancelRun(runId) {
   const meta = readMeta(runId)
   if (TERMINAL.has(meta.status)) return meta
   if (meta.pid && isRunnerPid(meta.pid, runId)) {
-    process.kill(meta.pid, 'SIGTERM')
-    return { ...meta, status: 'cancelling' }
+    if (!IS_WIN) {
+      process.kill(meta.pid, 'SIGTERM') // o runner trata o sinal e grava 'cancelled'
+      return { ...meta, status: 'cancelling' }
+    }
+    // Windows não entrega SIGTERM (TerminateProcess é imediato): o handler do
+    // runner nunca roda. Derrubamos a árvore (runner + claude + netos) e, como
+    // ninguém mais escreve a meta, finalizamos a run aqui.
+    killTree(meta.pid)
+    if (meta.claudePid) killTree(meta.claudePid)
+    denyPending(runId, 'run cancelada')
+    const done = { ...meta, status: 'cancelled', endedAt: nowIso() }
+    writeMeta(done)
+    return done
   }
   // Runner morto: ninguém mais escreve a meta, então marcamos aqui.
   const next = { ...meta, status: 'cancelled', endedAt: nowIso(), error: meta.error || 'cancelado (runner já não estava vivo)' }
@@ -222,8 +272,10 @@ export function cancelRun(runId) {
   return next
 }
 
+let gitBin
 function git(cwd, args, opts = {}) {
-  return execFileSync('git', ['-C', cwd, ...args], {
+  gitBin ??= resolveBin('git', 'GIT_BIN') || 'git'
+  return execFileSync(gitBin, ['-C', cwd, ...args], {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
     timeout: 20_000,
@@ -332,7 +384,8 @@ export function claudeVersion() {
   const bin = resolveBin('claude', 'CLAUDE_BIN')
   if (!bin) return null
   try {
-    return execFileSync(bin, ['--version'], { encoding: 'utf8', timeout: 10_000, env: runnerEnv() }).trim()
+    const sp = spawnSpec(bin, ['--version'])
+    return execFileSync(sp.file, sp.args, { encoding: 'utf8', timeout: 10_000, env: runnerEnv(), ...sp.options }).trim()
   } catch {
     return null
   }

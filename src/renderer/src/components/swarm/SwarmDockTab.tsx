@@ -50,7 +50,7 @@ export function SwarmDockTab(props: { rpc: HermesRpc | null }) {
                   type="button"
                   onClick={() => setSel(r.id)}
                   className={`grid w-full grid-cols-[auto_minmax(0,1fr)_4rem_auto] items-center gap-2 rounded px-2 py-1 text-left text-[11px] transition-colors ${
-                    sel === r.id ? 'bg-panel2 text-ink' : 'text-dim hover:bg-panel2/60'
+                    sel === r.id ? 'bg-panel2 text-ink' : 'text-dim hover:bg-hover/60'
                   }`}
                   title={r.task}
                 >

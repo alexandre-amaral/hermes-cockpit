@@ -299,7 +299,7 @@ export function TaskDetail({
 function Row({ label, busy, children }: { label: string; busy?: boolean; children: React.ReactNode }) {
   return (
     <div className="flex items-start gap-3">
-      <span className={cx('label w-[72px] shrink-0 pt-[3px] !text-[9px]', busy && 'hc-pulse-dot text-amber')}>{label}</span>
+      <span className={cx('label w-[72px] shrink-0 pt-[3px] !text-[9px]', busy && 'hc-pulse-dot text-warn')}>{label}</span>
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">{children}</div>
     </div>
   )

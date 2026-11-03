@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { Terminal, type ITheme } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
+import { readClipboard, writeClipboard } from '../../lib/clipboard'
 import { apiPath, errMsg } from '../../lib/devtools'
 import { invoke, onMain } from '../../lib/ipc'
+import { FONT_SIZE_DEFAULT, HOST_PLATFORM, keyAction, nextFontSize, TERM_HOST_ATTR } from '../../lib/term-keys'
 
 // Um terminal xterm.js sobre o WS /api/pty do serve (proxy no main via
 // window.hermes.ws). Contrato do backend (hermes_cli/web_routers/chat_ws.py):
@@ -43,7 +45,7 @@ const THEME: ITheme = {
 
 interface Props {
   id: string
-  /** 'shell' = zsh real via relay de PTY no main (ops:shell.*); 'hermes' = /api/pty (hermes --tui) */
+  /** 'shell' = shell real via relay de PTY no main (ops:shell.*); 'hermes' = /api/pty (hermes --tui) */
   kind?: 'shell' | 'hermes'
   /** cwd inicial do shell */
   cwd?: string | null
@@ -111,6 +113,63 @@ export function XtermView({ id, kind = 'hermes', cwd, cmd, profile, active, gene
     ro.observe(el)
     doFit()
 
+    // ── clipboard e atalhos (ver lib/term-keys.ts para o mapa) ───────────────
+    // Copiar usa term.getSelection(), que já vem com as linhas sem espaço à
+    // direita e CRLF no Windows; colar usa term.paste(), que normaliza
+    // CRLF→CR e respeita bracketed paste do programa em primeiro plano.
+    const copySelection = () => {
+      const sel = term.getSelection()
+      if (!sel) return
+      void writeClipboard(sel).catch(() => {})
+      term.clearSelection()
+    }
+    const pasteClipboard = () => {
+      void readClipboard()
+        .then((text) => {
+          if (text) term.paste(text)
+        })
+        .catch(() => {})
+    }
+    const zoom = (action: 'zoom-in' | 'zoom-out' | 'zoom-reset') => {
+      const size = nextFontSize(term.options.fontSize ?? FONT_SIZE_DEFAULT, action)
+      if (size === term.options.fontSize) return
+      term.options.fontSize = size
+      doFit()
+    }
+
+    term.attachCustomKeyEventHandler((ev) => {
+      if (ev.type !== 'keydown') return true
+      const action = keyAction({
+        key: ev.key,
+        ctrl: ev.ctrlKey,
+        shift: ev.shiftKey,
+        meta: ev.metaKey,
+        alt: ev.altKey,
+        hasSelection: term.hasSelection(),
+        platform: HOST_PLATFORM,
+      })
+      // 'sigint' é o próprio xterm (manda \x03); 'pass' segue o fluxo normal.
+      if (action === 'pass' || action === 'sigint') return true
+      ev.preventDefault()
+      ev.stopPropagation()
+      if (action === 'copy') copySelection()
+      else if (action === 'paste') pasteClipboard()
+      else if (action === 'select-all') term.selectAll()
+      else zoom(action)
+      return false
+    })
+
+    // Botão direito como no Windows Terminal: com seleção copia, senão cola.
+    const onContextMenu = (ev: MouseEvent) => {
+      ev.preventDefault()
+      if (term.hasSelection()) copySelection()
+      else {
+        term.focus()
+        pasteClipboard()
+      }
+    }
+    el.addEventListener('contextmenu', onContextMenu)
+
     const dataSub = term.onData((d) => {
       if (openRef.current) writeFn.current(d)
     })
@@ -119,6 +178,7 @@ export function XtermView({ id, kind = 'hermes', cwd, cmd, profile, active, gene
 
     return () => {
       ro.disconnect()
+      el.removeEventListener('contextmenu', onContextMenu)
       dataSub.dispose()
       term.dispose()
       termRef.current = null
@@ -147,11 +207,11 @@ export function XtermView({ id, kind = 'hermes', cwd, cmd, profile, active, gene
       termRef.current?.write('\r\n\x1b[90m── shell encerrado ──\x1b[0m\r\n')
     })
     let cancelled = false
-    invoke('ops:shell.open', myId, { cwd: cwd ?? undefined, cmd, cols: term?.cols ?? 80, rows: term?.rows ?? 24 })
-      .then(() => {
+    invoke<{ shell?: string }>('ops:shell.open', myId, { cwd: cwd ?? undefined, cmd, cols: term?.cols ?? 80, rows: term?.rows ?? 24 })
+      .then((r) => {
         if (cancelled) return
         openRef.current = true
-        statusRef.current('open')
+        statusRef.current('open', r?.shell)
         resizeFn.current()
       })
       .catch((e: unknown) => {
@@ -258,7 +318,9 @@ export function XtermView({ id, kind = 'hermes', cwd, cmd, profile, active, gene
   }, [active])
 
   return (
-    <div className="relative h-full w-full bg-void">
+    // {...{[TERM_HOST_ATTR]: ''}}: marca o terminal para os atalhos globais do
+    // App cederem as teclas de clipboard/zoom quando o foco está aqui.
+    <div className="relative h-full w-full bg-void" {...{ [TERM_HOST_ATTR]: '' }}>
       <div ref={host} className="absolute inset-0 px-2 py-1" />
       {unsupported && (
         <div className="absolute inset-0 flex items-center justify-center p-4 text-center text-[11px] text-faint">{unsupported}</div>

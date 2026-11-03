@@ -7,7 +7,10 @@
 //    marca isolation:'none' + note no meta). Continuações (resume) reusam o cwd.
 // 2. spawna `claude -p` em stream-json com o perm.mjs como permission-prompt-tool.
 // 3. grava events.jsonl, stderr.log e meta.json (atômico; escritor único).
-// 4. SIGTERM/SIGINT → mata o claude (grupo) e termina como cancelled.
+// 4. SIGTERM/SIGINT → mata o claude (grupo no POSIX, taskkill /T no Windows) e
+//    termina como cancelled. No Windows o SIGTERM NÃO chega (TerminateProcess é
+//    imediato): quem cancela é o cancelRun() de lib/runs.mjs, que derruba a
+//    árvore e grava a meta — ver o comentário lá.
 import { execFileSync, spawn } from 'node:child_process'
 import { createWriteStream, existsSync, mkdirSync, realpathSync } from 'node:fs'
 import { basename, isAbsolute, join, relative } from 'node:path'
@@ -15,6 +18,7 @@ import { createInterface } from 'node:readline'
 import { fileURLToPath } from 'node:url'
 import { resolveBin } from './lib/runs.mjs'
 import { usageFromResult } from './lib/usage.mjs'
+import { IS_WIN, killTree, spawnSpec } from './lib/platform.mjs'
 import {
   STATE_DIR,
   WORKTREES_DIR,
@@ -46,8 +50,11 @@ const EDIT_TOOLS = ['Edit', 'Write', 'MultiEdit', 'NotebookEdit']
 function allowedTools() {
   const out = [...READ_TOOLS]
   if (meta.isolation === 'worktree' && meta.worktree && isAbsolute(meta.worktree)) {
-    // `//` = caminho absoluto na sintaxe de regras do Claude Code.
-    for (const t of EDIT_TOOLS) out.push(`${t}(/${meta.worktree}/**)`)
+    // `//` = caminho absoluto na sintaxe de regras do Claude Code. No Windows a
+    // barra invertida é escape em glob: normaliza para `/` (C:/x/...). Se a regra
+    // não casar, a edição só cai no card de aprovação — degrada sem risco.
+    const wt = meta.worktree.replace(/\\/g, '/')
+    for (const t of EDIT_TOOLS) out.push(`${t}(/${wt}/**)`)
   }
   return out.join(',')
 }
@@ -67,22 +74,24 @@ function onSignal() {
   if (cancelled) return
   cancelled = true
   if (claude && claude.exitCode === null) {
-    try {
-      process.kill(-claude.pid, 'SIGTERM')
-    } catch {
+    // killTree: grupo (-pid) no POSIX, `taskkill /T` no Windows (sem sinais).
+    if (!killTree(claude.pid, 'SIGTERM')) {
       try {
         claude.kill('SIGTERM')
       } catch {
         /* já morreu */
       }
     }
-    setTimeout(() => {
-      try {
-        process.kill(-claude.pid, 'SIGKILL')
-      } catch {
-        /* noop */
-      }
-    }, 5000).unref()
+    if (!IS_WIN) {
+      // No Windows o taskkill já é /F; aqui o SIGKILL é a segunda chance.
+      setTimeout(() => {
+        try {
+          process.kill(-claude.pid, 'SIGKILL')
+        } catch {
+          /* noop */
+        }
+      }, 5000).unref()
+    }
   } else {
     finish({ status: 'cancelled' })
   }
@@ -91,8 +100,10 @@ process.on('SIGTERM', onSignal)
 process.on('SIGINT', onSignal)
 process.on('SIGHUP', () => {}) // sobrevive ao fechamento do terminal/pai
 
+let gitBin
 function git(cwd, args) {
-  return execFileSync('git', ['-C', cwd, ...args], {
+  gitBin ??= resolveBin('git', 'GIT_BIN') || 'git'
+  return execFileSync(gitBin, ['-C', cwd, ...args], {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
     timeout: 60_000,
@@ -192,7 +203,7 @@ function main() {
   }
   const claudeBin = resolveBin('claude', 'CLAUDE_BIN')
   if (!claudeBin) {
-    finish({ status: 'error', error: 'binário claude não encontrado (~/.local/bin, /opt/homebrew/bin, PATH)' })
+    finish({ status: 'error', error: 'binário claude não encontrado (BIN_DIRS de lib/platform.mjs, PATH ou CLAUDE_BIN)' })
     return
   }
   const mcpConfig = join(runDir(runId), 'mcp.json')
@@ -248,11 +259,20 @@ function main() {
     finish({ status: 'error', error: `cwd não existe: ${meta.cwd}` })
     return
   }
-  claude = spawn(claudeBin, args, {
+  // No Windows um .cmd/.bat não pode ir direto ao CreateProcess (CVE-2024-27980):
+  // spawnSpec desvia para o node (shim do npm) ou para o cmd.exe. Com o
+  // wrapper de cmd.exe, claude.pid é o pid do cmd — o taskkill /T do
+  // cancelamento cobre a árvore de qualquer forma.
+  const sp = spawnSpec(claudeBin, args)
+  claude = spawn(sp.file, sp.args, {
     cwd: meta.cwd,
     env: process.env,
     stdio: ['ignore', 'pipe', 'pipe'],
-    detached: true, // grupo próprio: SIGTERM no grupo mata subprocessos (Bash etc.)
+    // POSIX: grupo próprio, para o SIGTERM no grupo matar subprocessos (Bash etc.).
+    // Windows: detached = DETACHED_PROCESS (sem console) e tiraria o claude da
+    // árvore do taskkill; aqui o filho normal + windowsHide é o que funciona.
+    ...(IS_WIN ? { windowsHide: true } : { detached: true }),
+    ...sp.options,
   })
   save({ claudePid: claude.pid })
   if (cancelled) onSignal()

@@ -98,7 +98,7 @@ export function CodeBlock({ lang, code, open = false }: { lang: string; code: st
         <button
           onClick={() => void copy()}
           className={`ml-auto rounded px-1.5 py-px text-[10.5px] transition-colors ${
-            copied === 'ok' ? 'text-phos' : copied === 'err' ? 'text-alert' : 'text-faint hover:bg-panel2 hover:text-ink'
+            copied === 'ok' ? 'text-phos' : copied === 'err' ? 'text-alert' : 'text-faint hover:bg-hover hover:text-ink'
           }`}
           title="copiar código"
         >

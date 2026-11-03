@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { errMsg, ops, type PortRow } from '../../lib/ops'
 import { toast } from '../../lib/toast'
+import { IS_MAC } from '../../lib/platform'
 import { Btn, ConfirmBtn, EmptyState, ErrorState, SectionHeader, SkeletonRows, Tag, Th, useAsync } from './ui'
 
 // Portas TCP em LISTEN (lsof). Abrir no navegador, matar o processo dono
@@ -23,7 +24,7 @@ const isLocalAddr = (a: string) => a === '*' || a === '127.0.0.1' || a === '[::1
 export function PortsSection({ onCount }: { onCount?: (n: number) => void }) {
   const s = useAsync(ops.ports, [], 10_000)
   const [q, setQ] = useState('')
-  const [hideSystem, setHideSystem] = useState(true)
+  const [hideSystem, setHideSystem] = useState(IS_MAC)
 
   // agrupa IPv4/IPv6 da mesma porta+pid numa linha
   const rows = useMemo(() => {
@@ -70,10 +71,13 @@ export function PortsSection({ onCount }: { onCount?: (n: number) => void }) {
         at={s.at}
         onRefresh={() => void s.reload()}
       >
-        <label className="flex cursor-pointer items-center gap-1 text-[10px] uppercase tracking-[0.14em] text-faint">
-          <input type="checkbox" checked={hideSystem} onChange={(e) => setHideSystem(e.target.checked)} className="accent-amber" />
-          ocultar macOS
-        </label>
+        {IS_MAC && (
+          // O filtro conhece só nomes de daemon do macOS; fora dele não teria o que ocultar.
+          <label className="flex cursor-pointer items-center gap-1 text-[10px] uppercase tracking-[0.14em] text-faint">
+            <input type="checkbox" checked={hideSystem} onChange={(e) => setHideSystem(e.target.checked)} className="accent-amber" />
+            ocultar macOS
+          </label>
+        )}
       </SectionHeader>
       <div className="min-h-0 flex-1 overflow-auto">
         {s.initial ? (
@@ -99,7 +103,7 @@ export function PortsSection({ onCount }: { onCount?: (n: number) => void }) {
                 const local = r.addrs.some(isLocalAddr)
                 const exposed = r.addrs.some((a) => a === '*' || a === '[::]' || a === '0.0.0.0')
                 return (
-                  <tr key={`${r.pid}:${r.port}`} className="border-b border-edge/60 hover:bg-panel2/60">
+                  <tr key={`${r.pid}:${r.port}`} className="border-b border-edge/60 hover:bg-hover/60">
                     <td className="px-2 py-1 text-right tabular-nums text-amber">{r.port}</td>
                     <td className="px-2 py-1">
                       <span className="text-ink">{r.command}</span>
@@ -114,7 +118,7 @@ export function PortsSection({ onCount }: { onCount?: (n: number) => void }) {
                           </span>
                         ))}
                         {exposed && (
-                          <Tag tone="amber" title="escutando em todas as interfaces (visível na rede)">
+                          <Tag tone="warn" title="escutando em todas as interfaces (visível na rede)">
                             rede
                           </Tag>
                         )}

@@ -47,7 +47,7 @@ export function SwarmApprovalCard({
       <div className="flex min-w-0 items-baseline gap-2">
         <span className="font-bold text-amber glow-amber">!</span>
         <span className="shrink-0 text-[12px] text-ink">Aprovação pendente</span>
-        <span className="min-w-0 truncate text-[12px] text-amber">· {approval.toolName}</span>
+        <span className="min-w-0 truncate text-[12px] text-warn">· {approval.toolName}</span>
         {run && (
           <button
             type="button"

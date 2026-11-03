@@ -150,7 +150,7 @@ function ToolRow({ it, compact }: { it: Extract<Item, { k: 'tool' }>; compact: b
         onClick={() => setOpen((v) => !v)}
         className="flex w-full min-w-0 items-baseline gap-2 text-left"
       >
-        <span className={`shrink-0 ${err ? 'text-alert' : pending ? 'text-amber' : 'text-faint'}`}>
+        <span className={`shrink-0 ${err ? 'text-alert' : pending ? 'text-warn' : 'text-faint'}`}>
           {err ? '✕' : pending ? '→' : '✓'}
         </span>
         <span className="shrink-0 text-cyanic">{it.name}</span>

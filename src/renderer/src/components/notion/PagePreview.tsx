@@ -93,7 +93,7 @@ export function PagePreview({
       ) : (
         <div className="text-[11px] text-faint">página sem conteúdo</div>
       )}
-      {page.truncated && <div className="mt-2 text-[10px] text-amber">preview truncado (página longa) — abra no Notion para ver tudo</div>}
+      {page.truncated && <div className="mt-2 text-[10px] text-warn">preview truncado (página longa) — abra no Notion para ver tudo</div>}
     </div>
   )
 }

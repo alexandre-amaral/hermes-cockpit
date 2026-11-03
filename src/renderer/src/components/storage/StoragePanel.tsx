@@ -386,7 +386,7 @@ function SessionStore({ profiles }: { profiles: string[] }) {
                     <tr
                       key={k}
                       onClick={() => !prot && toggle(r)}
-                      className={`border-t border-edge/50 ${prot ? 'opacity-60' : 'cursor-pointer hover:bg-panel2'} ${selected.has(k) ? 'bg-amber/[0.06]' : ''}`}
+                      className={`border-t border-edge/50 ${prot ? 'opacity-60' : 'cursor-pointer hover:bg-hover'} ${selected.has(k) ? 'bg-amber/[0.06]' : ''}`}
                     >
                       <td className="px-3 py-1">
                         <input

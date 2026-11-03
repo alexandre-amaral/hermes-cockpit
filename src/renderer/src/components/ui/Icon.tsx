@@ -48,6 +48,9 @@ const PATHS = {
   telegram: 'M13.5 3L2.5 7.3l3.6 1.3 1.4 4.4 2.1-2.5 3 2.2zM6.1 8.6l5.4-3.6',
   money: 'M2.5 4.5h11v7h-11zM8 6.3a1.7 1.7 0 1 1 0 3.4 1.7 1.7 0 0 1 0-3.4zM4.5 8h.01M11.5 8h.01',
   auto: 'M8.7 2L4 9h3.5l-.7 5L11.5 7H8z',
+  ram: 'M2 5h12v5.5H2zM4.5 7h1.5M7.25 7h1.5M10 7h1.5M4 10.5v2M6.5 10.5v2M9.5 10.5v2M12 10.5v2',
+  disk: 'M2 5h12v6H2zM2 8h12M4 9.6h3.5M11.6 9.6h.01M4 6.4h3.5M11.6 6.4h.01',
+  gpu: 'M1.8 4.5h12.4v6.5H1.8zM4.5 11v2M11.5 11v2M6 6.3a1.9 1.9 0 1 1 0 3.8 1.9 1.9 0 0 1 0-3.8zM10 7h2.5M10 9.4h2.5',
 } as const
 
 export type IconName = keyof typeof PATHS

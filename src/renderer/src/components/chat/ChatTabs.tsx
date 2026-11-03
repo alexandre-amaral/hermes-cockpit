@@ -131,7 +131,7 @@ export function ChatTabs({
           type="button"
           onClick={() => nudge(-1)}
           aria-label="rolar abas para a esquerda"
-          className="hc-fade-in shrink-0 border-r border-edge px-1.5 text-[11px] text-faint hover:bg-panel2 hover:text-ink"
+          className="hc-fade-in shrink-0 border-r border-edge px-1.5 text-[11px] text-faint hover:bg-hover hover:text-ink"
         >
           ‹
         </button>
@@ -206,7 +206,7 @@ export function ChatTabs({
                 }
               }}
               className={`group relative flex max-w-[220px] shrink-0 cursor-pointer select-none items-center gap-1.5 border-r border-edge px-3 text-[11.5px] transition-colors ${
-                active ? 'bg-void text-ink' : 'text-dim hover:bg-panel2/60 hover:text-ink'
+                active ? 'bg-void text-ink' : 'text-dim hover:bg-hover/60 hover:text-ink'
               } outline-none focus-visible:shadow-[inset_0_0_0_1px_var(--color-amber)] ${dragKey === t.key ? 'opacity-40' : ''} ${overKey === t.key ? 'shadow-[inset_2px_0_0_var(--color-amber)]' : ''}`}
               onClick={() => !disabled && editing !== t.key && onSelect(t.key)}
               onDoubleClick={() => side && !disabled && setEditing(t.key)}
@@ -262,7 +262,7 @@ export function ChatTabs({
           type="button"
           onClick={() => nudge(1)}
           aria-label="rolar abas para a direita"
-          className="hc-fade-in shrink-0 border-l border-edge px-1.5 text-[11px] text-faint hover:bg-panel2 hover:text-ink"
+          className="hc-fade-in shrink-0 border-l border-edge px-1.5 text-[11px] text-faint hover:bg-hover hover:text-ink"
         >
           ›
         </button>
@@ -271,7 +271,7 @@ export function ChatTabs({
         onClick={onNew}
         disabled={disabled}
         title="novo side-chat"
-        className="shrink-0 border-l border-edge px-2.5 text-[13px] text-faint hover:bg-panel2 hover:text-phos disabled:opacity-40"
+        className="shrink-0 border-l border-edge px-2.5 text-[13px] text-faint hover:bg-hover hover:text-phos disabled:opacity-40"
       >
         +
       </button>
@@ -282,7 +282,7 @@ export function ChatTabs({
           setMenu(menu ? null : { key: activeKey, x: r.right - 220, y: r.bottom + 2, list: true })
         }}
         title={`gerenciar abas · ${tabs.length} aberta(s)`}
-        className="shrink-0 border-l border-edge px-2 text-[13px] text-faint hover:bg-panel2 hover:text-ink"
+        className="shrink-0 border-l border-edge px-2 text-[13px] text-faint hover:bg-hover hover:text-ink"
       >
         ⋯{tabs.length > 1 && <span className="ml-0.5 align-top font-mono text-[9px] text-faint">{tabs.length}</span>}
       </button>
@@ -306,7 +306,7 @@ export function ChatTabs({
                     setMenu(null)
                     it.run()
                   }}
-                  className={`flex w-full min-w-0 items-center gap-1.5 px-3 py-1 text-left text-[11.5px] hover:bg-panel2 hover:text-ink disabled:opacity-35 disabled:hover:bg-transparent ${
+                  className={`flex w-full min-w-0 items-center gap-1.5 px-3 py-1 text-left text-[11.5px] hover:bg-hover hover:text-ink disabled:opacity-35 disabled:hover:bg-transparent ${
                     active ? 'text-amber' : 'text-dim'
                   }`}
                 >

@@ -8,14 +8,17 @@ import { ModelsSection } from './ModelsSection'
 import { PortsSection } from './PortsSection'
 import { ProcessesSection } from './ProcessesSection'
 import { ReposSection } from './ReposSection'
-import { Meter, useAsync, useLocal } from './ui'
+import { SystemSection } from './SystemSection'
+import { displayTone } from '../../lib/radial'
+import { RadialMeter } from '../ui/RadialMeter'
+import { useAsync, useLocal } from './ui'
 
 // Central Ops (área central): sidebar de seções com contadores + conteúdo.
 // Só a seção ativa fica montada (o polling dela para quando sai de vista);
 // os contadores das demais vêm de uma leitura única ao abrir a view.
 // CONTRATO: nome do export e props são fixos (App/registry já montam assim).
 
-type SectionId = 'models' | 'ports' | 'procs' | 'repos' | 'containers' | 'storage'
+type SectionId = 'models' | 'ports' | 'procs' | 'repos' | 'containers' | 'storage' | 'system'
 
 const ICON: Record<SectionId, ReactNode> = {
   models: <path d="M8 1.5 14 5v6l-6 3.5L2 11V5zM2 5l6 3.5L14 5M8 8.5v6" />,
@@ -24,6 +27,7 @@ const ICON: Record<SectionId, ReactNode> = {
   repos: <path d="M5 2.5v8M5 10.5a1.75 1.75 0 1 0 0 3.5 1.75 1.75 0 0 0 0-3.5zM11 5.5a1.75 1.75 0 1 0 0-3.5 1.75 1.75 0 0 0 0 3.5zM11 5.5c0 3-6 2-6 5" />,
   containers: <path d="M2 6h12v7.5H2zM2 6l2-3.5h8L14 6M6 9h4" />,
   storage: <path d="M2.5 4c0-1 2.5-1.75 5.5-1.75S13.5 3 13.5 4v8c0 1-2.5 1.75-5.5 1.75S2.5 13 2.5 12zM2.5 4c0 1 2.5 1.75 5.5 1.75S13.5 5 13.5 4M2.5 8c0 1 2.5 1.75 5.5 1.75S13.5 9 13.5 8" />,
+  system: <path d="M5.5 5.5h5v5h-5zM6.5 2v2M9.5 2v2M6.5 12v2M9.5 12v2M2 6.5h2M2 9.5h2M12 6.5h2M12 9.5h2" />,
 }
 
 const SECTIONS: { id: SectionId; label: string; hint: string }[] = [
@@ -33,6 +37,7 @@ const SECTIONS: { id: SectionId; label: string; hint: string }[] = [
   { id: 'repos', label: 'Projetos', hint: 'repos git' },
   { id: 'containers', label: 'Containers', hint: 'Docker' },
   { id: 'storage', label: 'Armazenamento', hint: 'sessões e disco' },
+  { id: 'system', label: 'Sistema', hint: 'CPU, RAM, volumes e GPU do host' },
 ]
 
 const IDS = new Set<string>(SECTIONS.map((s) => s.id))
@@ -51,6 +56,7 @@ export function OpsView({ rpc }: { rpc: HermesRpc | null }) {
     procs: useCallback((n: number) => setCount('procs', n), [setCount]),
     repos: useCallback((n: number) => setCount('repos', n), [setCount]),
     containers: useCallback((n: number) => setCount('containers', n), [setCount]),
+    system: useCallback((n: number) => setCount('system', n), [setCount]),
   }
 
   // leitura única para os contadores das seções fora de vista
@@ -61,6 +67,7 @@ export function OpsView({ rpc }: { rpc: HermesRpc | null }) {
     void ops.containers().then((c) => setCount('containers', c.daemon ? c.containers.filter((x) => x.state === 'running').length : 'off'), () => {})
     void ops.repos().then((r) => setCount('repos', r.length), () => {})
     void ops.processes().then((p) => setCount('procs', p.length), () => {})
+    void ops.system().then((s) => setCount('system', s.cpu.cores), () => setCount('system', 'off'))
   }, [setCount])
 
   if (!hasMain()) {
@@ -89,7 +96,7 @@ export function OpsView({ rpc }: { rpc: HermesRpc | null }) {
                 title={s.hint}
                 aria-current={on ? 'page' : undefined}
                 className={`group relative mb-0.5 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors ${
-                  on ? 'bg-amber/10 text-ink' : 'text-dim hover:bg-panel2 hover:text-ink'
+                  on ? 'bg-amber/10 text-ink' : 'text-dim hover:bg-hover hover:text-ink'
                 }`}
               >
                 {on && <span className="absolute inset-y-1.5 left-0 w-[2px] rounded-full bg-amber" />}
@@ -111,7 +118,7 @@ export function OpsView({ rpc }: { rpc: HermesRpc | null }) {
             )
           })}
         </div>
-        <SystemCard />
+        <SystemCard onOpen={() => setStored('system')} active={active === 'system'} />
       </nav>
       <main key={active} className="hc-fade-in relative min-h-0 min-w-0 flex-1">
         {active === 'models' && <ModelsSection rpc={rpc} onCount={counters.models} />}
@@ -124,18 +131,33 @@ export function OpsView({ rpc }: { rpc: HermesRpc | null }) {
             <StoragePanel rpc={rpc} />
           </div>
         )}
+        {active === 'system' && <SystemSection onCount={counters.system} />}
       </main>
     </div>
   )
 }
 
-function SystemCard() {
+/**
+ * Rodapé da rail: resumo do host (CPU, RAM, volume do sistema e GPU) em donuts
+ * pequenos, sem texto embaixo — o detalhe fica no title de cada anel.
+ * Multiplataforma — os números vêm de ops:system (src/main/metrics.ts) e o
+ * rótulo é o hostname + SO, não "Mac". Clicar abre a seção Sistema.
+ */
+function SystemCard({ onOpen, active }: { onOpen: () => void; active: boolean }) {
   const s = useAsync<SystemInfo>(ops.system, [], 5_000)
   const d = s.data
-  const memPct = d ? (d.memUsed / d.memTotal) * 100 : 0
-  const diskPct = d && d.diskTotal ? ((d.diskTotal - d.diskFree) / d.diskTotal) * 100 : 0
+  const disk = d ? (d.volumes.find((v) => v.id === d.primaryVolume) ?? d.volumes[0] ?? null) : null
+  const gpu = d?.gpus.find((g) => g.pct != null) ?? d?.gpus[0] ?? null
+  const gpuPct = gpu?.pct ?? d?.gpu3dPct ?? null
   return (
-    <div className="border-t border-edge px-3 py-2.5 text-[10.5px]">
+    <button
+      type="button"
+      onClick={onOpen}
+      title={d ? [d.hostname, d.osVersion, d.osDetail].filter(Boolean).join(' · ') : 'detalhes do sistema'}
+      className={`w-full border-t border-edge px-3 py-2.5 text-left text-[10.5px] transition-colors ${
+        active ? 'bg-amber/5' : 'hover:bg-hover'
+      }`}
+    >
       <div className="mb-1.5 flex items-center gap-1.5">
         <span className="label">Sistema</span>
         {d && <span className="ml-auto truncate text-faint">up {fmtUptime(d.uptimeSec)}</span>}
@@ -152,26 +174,52 @@ function SystemCard() {
         </div>
       ) : (
         <div className="space-y-1.5">
-          <Row label="cpu" value={`${d.cpuPct.toFixed(0)}% · ${d.cores}c`} pct={d.cpuPct} />
-          <Row label="mem" value={`${fmtBytes(d.memUsed)} / ${fmtBytes(d.memTotal)}`} pct={memPct} />
-          <Row label="disco" value={`${fmtBytes(d.diskFree)} livre`} pct={diskPct} />
-          <div className="truncate pt-0.5 text-faint" title={`${d.hostname} · ${d.osVersion} · load ${d.load.map((x) => x.toFixed(2)).join(' ')}`}>
-            {d.osVersion} · load {d.load[0].toFixed(1)}
+          <div className="flex items-start justify-between gap-1">
+            <Dial label="cpu" pct={d.cpu.pct} title={`CPU ${d.cpu.pct.toFixed(0)}% · ${d.cpu.cores} núcleos · ${d.cpu.model}`} />
+            <Dial label="mem" pct={d.mem.pct} title={`RAM ${fmtBytes(d.mem.used)} / ${fmtBytes(d.mem.total)}`} />
+            {disk && (
+              <Dial
+                label={disk.id === '/' ? 'disco' : disk.id.toLowerCase()}
+                pct={disk.pct}
+                title={`${disk.id} · ${fmtBytes(disk.used)} / ${fmtBytes(disk.total)} · ${fmtBytes(disk.free)} livres`}
+              />
+            )}
+            {gpu && (
+              <Dial
+                label="gpu"
+                pct={gpuPct}
+                title={[
+                  gpu.name,
+                  gpuPct == null ? 'uso indisponível' : `${gpuPct.toFixed(0)}%`,
+                  gpu.vramTotal && gpu.vramUsed != null ? `vram ${fmtBytes(gpu.vramUsed)} / ${fmtBytes(gpu.vramTotal)}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              />
+            )}
+          </div>
+          <div className="truncate pt-0.5 text-faint">{d.hostname}</div>
+          <div className="truncate text-faint">
+            {d.osVersion}
+            {d.load ? ` · load ${d.load[0].toFixed(1)}` : ''}
           </div>
         </div>
       )}
-    </div>
+    </button>
   )
 }
 
-function Row({ label, value, pct }: { label: string; value: string; pct: number }) {
+/** Donut pequeno da rail: só o anel + a % dentro; o rótulo vai no caption. */
+function Dial({ label, pct, title }: { label: string; pct: number | null; title: string }) {
   return (
-    <div>
-      <div className="mb-0.5 flex items-center gap-1">
-        <span className="uppercase tracking-[0.14em] text-faint">{label}</span>
-        <span className="ml-auto truncate tabular-nums text-dim">{value}</span>
-      </div>
-      <Meter pct={pct} tone={pct > 90 ? 'alert' : pct > 75 ? 'amber' : 'phos'} />
-    </div>
+    <RadialMeter
+      value={pct}
+      tone={displayTone(pct)}
+      size={40}
+      strokeWidth={3.5}
+      aria={label}
+      title={title}
+      caption={label}
+    />
   )
 }

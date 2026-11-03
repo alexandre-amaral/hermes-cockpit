@@ -1,8 +1,10 @@
 import { useEffect, useRef } from 'react'
 import { cx } from '../ui'
 import { describeComputer, type ComputerAction } from '../../lib/voice'
+import { HOST_LABEL, HOST_THIS } from '../../lib/platform'
 
-// Painel "Mac ao vivo": screenshot (ops:screenshot) + trilha de ações do agente.
+// Painel "<host> ao vivo": screenshot (ops:screenshot) + trilha de ações do
+// agente — o rótulo segue a plataforma (Mac/Windows/Linux).
 // O marcador de clique só aparece sobre a imagem quando a ação mirou a tela inteira
 // (app="screen"); nos demais casos as coordenadas são relativas à janela capturada
 // pelo tool, então o destaque fica na própria linha da ação.
@@ -40,7 +42,7 @@ export function MacLivePanel(props: {
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">
       <div className="flex items-center gap-2">
-        <span className="text-[10px] font-semibold tracking-[0.18em] text-dim uppercase">Mac ao vivo</span>
+        <span className="text-[10px] font-semibold tracking-[0.18em] text-dim uppercase">{HOST_LABEL} ao vivo</span>
         {polling && (
           <span className="flex items-center gap-1 text-[10px] tracking-wider text-cyanic uppercase">
             <span className="hc-pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-cyanic" /> ao vivo
@@ -57,7 +59,7 @@ export function MacLivePanel(props: {
 
       <div className="relative aspect-[16/10] w-full overflow-hidden rounded-md border border-edge2 bg-void">
         {shot ? (
-          <img src={shot} alt="tela do Mac" className="h-full w-full object-contain" draggable={false} />
+          <img src={shot} alt={`tela ${HOST_THIS}`} className="h-full w-full object-contain" draggable={false} />
         ) : (
           <div className="flex h-full items-center justify-center px-6 text-center text-[11px] text-faint">
             {shotError ? null : polling ? 'capturando…' : 'a tela aparece quando o agente usar computer use (ou fixe a tela)'}

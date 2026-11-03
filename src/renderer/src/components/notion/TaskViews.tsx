@@ -41,7 +41,7 @@ function TaskLine({
         }}
         className={cx(
           'group relative flex cursor-default items-center gap-2.5 rounded-md border px-2.5 py-[7px] outline-none transition-colors duration-[var(--hc-dur-1)]',
-          selected ? 'border-amber/35 bg-amber/[0.06]' : 'border-transparent hover:border-edge hover:bg-panel2/60 focus-visible:border-edge2',
+          selected ? 'border-amber/35 bg-amber/[0.06]' : 'border-transparent hover:border-edge hover:bg-hover/60 focus-visible:border-edge2',
         )}
       >
         <TaskCheck done={done} busy={busy} onToggle={onToggleDone} label={done ? 'reabrir tarefa' : 'concluir tarefa'} />

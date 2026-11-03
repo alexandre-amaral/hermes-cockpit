@@ -146,7 +146,7 @@ function RepoCard({
           {short(r.path)}
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-1">
-          {r.dirty > 0 ? <Tag tone="amber">{r.dirty} alterações</Tag> : <Tag tone="phos">limpo</Tag>}
+          {r.dirty > 0 ? <Tag tone="warn">{r.dirty} alterações</Tag> : <Tag tone="phos">limpo</Tag>}
           {r.ahead ? <Tag tone="cyanic">↑{r.ahead}</Tag> : null}
           {r.behind ? <Tag tone="alert">↓{r.behind}</Tag> : null}
           {r.ahead === undefined && <Tag title="sem upstream">local</Tag>}

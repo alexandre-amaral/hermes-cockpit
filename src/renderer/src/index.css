@@ -14,12 +14,45 @@
   --color-phos: #7ee787;
   --color-cyanic: #6cb6ff;
   --color-alert: #e5534b;
+  /* aviso/pendência — SEPARADO do acento (--color-amber). O :root abaixo o
+     iguala ao acento nos presets atuais, então nada muda visualmente; existe
+     para presets futuros que queiram um amarelo próprio. Use
+     text-warn/bg-warn/border-warn em spinners de busy, truncamentos,
+     aprovações pendentes e "esperando você". */
+  --color-warn: #e8a33d;
+  /* superfícies semânticas (sidebar/rail, hover de item, item selecionado).
+     Caem nos tokens atuais por padrão — mesma aparência de antes. */
+  --color-sidebar: #101318;
+  --color-hover: #141922;
+  --color-sel: #141922;
+  --color-sel-ink: #d6dae2;
+  /* fundos "soft" de estado (badges/chips) — a própria cor a 10%, idêntico ao
+     bg-<cor>/10 que estava escrito à mão. */
+  --color-phos-soft: #7ee787;
+  --color-warn-soft: #e8a33d;
+  --color-alert-soft: #e5534b;
+  --color-cyanic-soft: #6cb6ff;
   /* acento do ESPAÇO ativo (lib/space.ts → <html data-space>): Houer = âmbar,
      Pessoal = ciano/fósforo, Tudo = neutro. Utilitárias: text-space, bg-space… */
   --color-space: #e8a33d;
   --color-space2: #e8a33d;
   --font-mono: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
   --font-display: "Iowan Old Style", "New York", ui-serif, Georgia, serif;
+}
+
+/* Derivação dos tokens semânticos a partir do preset ativo. Fica num :root
+   separado (e não no @theme) porque o @theme é estático e o preset troca as
+   cores base por style inline no <html> — ver lib/theme.ts::applyTheme. */
+:root {
+  --color-warn: var(--color-amber);
+  --color-sidebar: var(--color-panel);
+  --color-hover: var(--color-panel2);
+  --color-sel: var(--color-panel2);
+  --color-sel-ink: var(--color-ink);
+  --color-phos-soft: color-mix(in srgb, var(--color-phos) 10%, transparent);
+  --color-warn-soft: color-mix(in srgb, var(--color-warn) 10%, transparent);
+  --color-alert-soft: color-mix(in srgb, var(--color-alert) 10%, transparent);
+  --color-cyanic-soft: color-mix(in srgb, var(--color-cyanic) 10%, transparent);
 }
 
 /* ─── Motion tokens ────────────────────────────────────────────────────────
@@ -860,7 +893,7 @@ body::before {
    hc-sweep          varredura única ao entrar algo novo numa coluna
    Tudo desliga em prefers-reduced-motion (bloco no fim). */
 .hc-flow-x-amber {
-  background-image: repeating-linear-gradient(90deg, var(--color-amber) 0 6px, transparent 6px 12px);
+  background-image: repeating-linear-gradient(90deg, var(--color-warn) 0 6px, transparent 6px 12px);
   background-size: 24px 1px;
   animation: hc-flow-x 1.8s linear infinite;
 }
@@ -875,7 +908,7 @@ body::before {
   animation: hc-kf-node-ring 1.8s var(--hc-ease-out) infinite;
 }
 .hc-flow-node-live { color: var(--color-phos); }
-.hc-flow-node-you { color: var(--color-amber); }
+.hc-flow-node-you { color: var(--color-warn); }
 .hc-flow-node-you::after { animation-duration: 1.2s; }
 @keyframes hc-kf-node-ring {
   0% { opacity: 0.7; transform: scale(0.6); }
@@ -963,4 +996,17 @@ body::before {
   }
   .hc-ecg path { stroke-dasharray: none; stroke-dashoffset: 0; }
   .hc-sweep::before { display: none; }
+}
+
+/* ─── Donut de uso (components/ui/RadialMeter.tsx) ──────────────────────────
+   Barra → anel: a geometria vem de lib/radial.ts e o arco anima pelo
+   stroke-dashoffset. O bloco global de prefers-reduced-motion (acima) já zera
+   a transição. */
+.hc-radial-track {
+  stroke: color-mix(in srgb, var(--color-edge) 88%, var(--color-panel2));
+}
+.hc-radial-arc {
+  transition:
+    stroke-dashoffset var(--hc-dur-4) var(--hc-ease-out),
+    stroke var(--hc-dur-2) linear;
 }

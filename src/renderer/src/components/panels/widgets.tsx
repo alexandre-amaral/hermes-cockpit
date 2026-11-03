@@ -1,16 +1,14 @@
+import { fmtUptime, ops, type SystemInfo } from '../../lib/ops'
+import { HOST_LABEL } from '../../lib/platform'
 import { agendaPath, inSpace, spaceOfAccount, useSpace, type Space } from '../../lib/space'
-import { SkeletonLines } from '../ui/Skeleton'
-import { Bar, PanelFrame } from './PanelFrame'
+import { mainGpu, systemCards } from '../../lib/system-cards'
+import { useAsync } from '../ops/ui'
+import { RadialStat } from '../ui/RadialMeter'
+import { PanelFrame } from './PanelFrame'
 import { usePluginSource } from './source'
 import {
   API,
   calendarColor,
-  fmtReset,
-  fmtTokens,
-  providerUsage,
-  totalTokens,
-  quotaWindows,
-  worstWindow,
   type Agenda,
   type AgendaEvent,
   type Foco,
@@ -18,12 +16,12 @@ import {
   type InboxItem,
   type Notion,
   type NotionTask,
-  type Quota,
   type Sistema,
 } from './types'
 
-// Widgets do plugin cockpit. Cada um lê a própria fonte (polling compartilhado
-// em source.tsx) e mostra erro/vazio honesto — nada de dado inventado.
+// Widgets dos painéis. A maioria lê uma rota do plugin cockpit (polling
+// compartilhado em source.tsx); o de Sistema lê a coleta local do main
+// (ops:system). Cada um mostra erro/vazio honesto — nada de dado inventado.
 
 export interface WidgetProps {
   refreshMs: number
@@ -328,149 +326,71 @@ export function AgendaWidget({ refreshMs }: WidgetProps) {
   )
 }
 
-// ─── Cota (resumo) ───────────────────────────────────────────────────────────
-export function QuotaWidget({ refreshMs }: WidgetProps) {
-  const quota = usePluginSource<Quota>(API.quota, refreshMs)
-  const q = quota.data
-  const provs = q?.provedores ?? []
-  const total = totalTokens(provs)
-  return (
-    <PanelFrame
-      titulo="Provedores · cota"
-      fonte={q?.mes ? `mês ${q.mes}` : undefined}
-      error={quota.error}
-      loading={quota.loading}
-      empty={!quota.loading && !q}
-      onRefresh={quota.refresh}
-    >
-      {q && (
-        <div className="space-y-1.5">
-          {total != null && (
-            <div className="text-[11px] text-dim">
-              consumo <span className="text-amber">{fmtTokens(total)} tokens</span>
-            </div>
-          )}
-          {provs.map((p, i) => (
-            <ProviderRow key={i} p={p} />
-          ))}
-        </div>
-      )}
-    </PanelFrame>
-  )
-}
-
-export function ProviderRow({ p }: { p: NonNullable<Quota['provedores']>[number] }) {
-  const ws = quotaWindows(p)
-  const worst = worstWindow(p)
-  // Uso do mês: tokens por padrão; US$ só para cota explicitamente em créditos.
-  const monthly = providerUsage(p).text ?? ''
-  const right = worst ? `${Math.round(worst.pct)}%` : monthly || '—'
-  const tone = i2tone(p.nome)
-  return (
-    <div role="group" aria-label={`Cota ${p.nome ?? 'provedor'}`}>
-      <div className="flex items-baseline justify-between gap-2 text-[11px]">
-        <span className="truncate text-ink" title={[p.nome, p.plano].filter(Boolean).join(' · ')}>
-          {p.nome}
-          {p.plano ? <span className="text-faint"> · {p.plano}</span> : null}
-        </span>
-        <span className="shrink-0 text-[10px] text-dim" title={worst ? `maior uso: ${worst.label}` : undefined}>
-          {right}
-        </span>
-      </div>
-      {ws.length === 0 && <Bar pct={null} tone={tone} />}
-      {ws.length > 0 && (
-        <ul className="mt-0.5 space-y-1">
-          {ws.map((w, i) => {
-            const r = fmtReset(w.reset)
-            return (
-              <li key={`${w.label}-${i}`} aria-label={`${w.label} ${Math.round(w.pct)}%${r ? `, reset ${r.short}` : ''}`}>
-                <div className="flex items-baseline justify-between gap-2 text-[9px]">
-                  <span className="truncate text-dim">{w.label}</span>
-                  <span className="shrink-0 tabular-nums text-faint">
-                    {r && (
-                      <span title={r.full} className="mr-1.5">
-                        reset {r.short}
-                      </span>
-                    )}
-                    <span className="text-dim">{Math.round(w.pct)}%</span>
-                  </span>
-                </div>
-                <Bar pct={w.pct} tone={tone} />
-              </li>
-            )
-          })}
-        </ul>
-      )}
-      {(monthly || p.aviso) && (
-        <div className="mt-0.5 truncate text-[9px] text-faint" title={[monthly && `mês: ${monthly}`, p.aviso].filter(Boolean).join(' — ')}>
-          {monthly && <>mês {monthly}</>}
-          {monthly && p.aviso && ' · '}
-          {p.aviso && <span className="text-amber/80">{p.aviso}</span>}
-        </div>
-      )}
-      {ws.length === 0 && !monthly && !p.aviso && <div className="mt-0.5 text-[9px] text-faint">sem janela de limite</div>}
-    </div>
-  )
-}
-
-// Tom da barra derivado do nome do provedor (hash estável) — sem lista fixa de
-// provedores: a cota é data-driven, quem aparece é o que o plugin devolver.
-const TONES = ['amber', 'phos', 'cyanic'] as const
-function i2tone(nome?: string): 'amber' | 'phos' | 'cyanic' {
-  let h = 0
-  for (const ch of nome ?? '') h = (h * 31 + ch.charCodeAt(0)) >>> 0
-  return TONES[h % TONES.length]
-}
-
-// ─── Sistema (Mac) ───────────────────────────────────────────────────────────
+// ─── Sistema (host do cockpit) ──────────────────────────────────────────────
+// Métricas vêm de ops:system (src/main/metrics.ts) — a MESMA coleta local
+// multiplataforma da Ops > Sistema, que funciona no Windows/Linux/macOS.
+// O plugin cockpit (/sistema) é EXTRA e opcional: quando responde, acrescenta
+// gateway/ollama/processos do Hermes; quando não existe (404 no Windows), é
+// omitido em silêncio — nunca vira erro no card.
+//
+// Layout: linha de cartões com donut (RadialStat) que quebra em várias linhas
+// — grid auto-fill de ~120px, então num painel estreito cabem 2 por linha sem
+// cortar texto (rótulos longos truncam e ficam no title).
 export function SistemaWidget({ refreshMs }: WidgetProps) {
-  const sys = usePluginSource<Sistema>(API.sistema, refreshMs)
-  const s = sys.data
+  const sys = useAsync<SystemInfo>(ops.system, [], refreshMs)
+  const plugin = usePluginSource<Sistema>(API.sistema, Math.max(refreshMs, 60_000))
+  const d = sys.data
+  const p = plugin.error ? null : plugin.data
+  const cards = d ? systemCards(d) : []
+  const gpu = d ? mainGpu(d) : null
   return (
     <PanelFrame
-      titulo="Sistema · Mac"
-      fonte="psutil"
+      titulo={`Sistema · ${HOST_LABEL}`}
+      fonte="local"
       error={sys.error}
-      loading={sys.loading}
-      empty={!sys.loading && !s}
-      onRefresh={sys.refresh}
+      loading={sys.initial}
+      empty={!d && !sys.loading}
+      emptyText={sys.error ? 'sem métricas do host' : 'sem dados'}
+      onRefresh={() => void sys.reload()}
     >
-      {s && (
-        <div className="space-y-1.5 text-[11px]">
-          <Metric label="CPU" pct={s.cpu_percent} />
-          <Metric
-            label={`RAM ${s.mem_used_gb ?? '?'}/${s.mem_total_gb ?? '?'} GB`}
-            pct={s.mem_percent}
-          />
-          <Metric label={`Disco · ${s.disk_free_gb ?? '?'} GB livres`} pct={s.disk_percent} />
+      {d && (
+        <div className="space-y-2">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-1.5">
+            {cards.map((c) => (
+              <RadialStat
+                key={c.key}
+                icon={c.icon}
+                label={c.label}
+                value={c.pct}
+                tone={c.tone}
+                detail={c.detail}
+                sub={c.sub}
+                title={c.title}
+                size={52}
+                strokeWidth={5}
+              />
+            ))}
+          </div>
           <div className="flex flex-wrap gap-x-3 text-[10px] text-dim">
-            {s.load1 != null && <span>load {s.load1.toFixed(2)}</span>}
-            {s.bateria_percent != null && (
-              <span>
-                bateria {Math.round(s.bateria_percent)}%{s.bateria_carregando ? ' ⚡' : ''}
-              </span>
-            )}
-            <span className={s.ollama ? 'text-phos' : 'text-faint'}>ollama {s.ollama ? 'on' : 'off'}</span>
-            {s.hermes_processes != null && <span>{s.hermes_processes} proc hermes</span>}
-            <span className={s.gateway ? 'text-phos' : 'text-faint'}>
-              gateway {s.gateway ? (s.gateway.code_version ?? 'on') : 'sem estado'}
+            <span title={[d.hostname, d.osVersion, d.osDetail].filter(Boolean).join(' · ')}>
+              {d.osVersion} · no ar há {fmtUptime(d.uptimeSec)}
             </span>
+            {d.load && <span>load {d.load[0].toFixed(2)}</span>}
+            {!gpu && <span className="text-faint">{d.gpuError ?? 'sem GPU'}</span>}
+            {/* extras só do plugin cockpit: ausentes (e silenciosos) sem ele */}
+            {p && (
+              <>
+                <span className={p.ollama ? 'text-phos' : 'text-faint'}>ollama {p.ollama ? 'on' : 'off'}</span>
+                {p.hermes_processes != null && <span>{p.hermes_processes} proc hermes</span>}
+                <span className={p.gateway ? 'text-phos' : 'text-faint'}>
+                  gateway {p.gateway ? (p.gateway.code_version ?? 'on') : 'sem estado'}
+                </span>
+              </>
+            )}
           </div>
         </div>
       )}
     </PanelFrame>
-  )
-}
-
-function Metric({ label, pct }: { label: string; pct?: number }) {
-  return (
-    <div>
-      <div className="flex justify-between text-[10px]">
-        <span className="text-dim">{label}</span>
-        <span className="text-faint">{pct != null ? `${Math.round(pct)}%` : '—'}</span>
-      </div>
-      <Bar pct={pct ?? null} tone="phos" />
-    </div>
   )
 }
 
@@ -489,32 +409,5 @@ export function SwarmWidget() {
       empty
       emptyText="sem dados de execuções do swarm — o plugin ainda não expõe subagents (P2-15)."
     />
-  )
-}
-
-/** Cota compacta para o rodapé da rail (região "rail"). */
-export function RailQuotaWidget({ refreshMs }: WidgetProps) {
-  const quota = usePluginSource<Quota>(API.quota, refreshMs || 60_000)
-  const provs = quota.data?.provedores ?? []
-  return (
-    <div className="h-full overflow-y-auto px-3 py-2.5">
-      <div className="label mb-1.5 flex items-center gap-2">
-        <span>Provedores · cota</span>
-        {quota.error && (
-          <span className="truncate normal-case tracking-normal text-alert" title={quota.error}>
-            erro
-          </span>
-        )}
-      </div>
-      {quota.loading && <SkeletonLines lines={4} />}
-      {!quota.loading && provs.length === 0 && (
-        <div className="text-[10px] text-faint">{quota.error ? 'cota indisponível' : 'sem provedores'}</div>
-      )}
-      <div className="space-y-2">
-        {provs.map((p, i) => (
-          <ProviderRow key={`${p.nome}-${i}`} p={p} />
-        ))}
-      </div>
-    </div>
   )
 }

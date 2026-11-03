@@ -136,7 +136,7 @@ export function FilesTab({ active }: { active: boolean }) {
               onDoubleClick={() => !e.isDirectory && void openIn({ kind: 'vscode', path: e.path })}
               title={e.path}
               className={`flex w-full min-w-0 items-center gap-2 px-3 py-[3px] text-left text-[11px] ${
-                file === e.path ? 'bg-panel2 text-ink' : 'text-dim hover:bg-panel2/60 hover:text-ink'
+                file === e.path ? 'bg-panel2 text-ink' : 'text-dim hover:bg-hover/60 hover:text-ink'
               }`}
             >
               <span className={`w-3 shrink-0 text-center ${e.isDirectory ? 'text-amber' : 'text-faint'}`}>{e.isDirectory ? '▸' : '·'}</span>

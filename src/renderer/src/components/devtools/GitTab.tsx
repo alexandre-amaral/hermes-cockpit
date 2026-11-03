@@ -188,7 +188,7 @@ export function GitTab({ active }: { active: boolean }) {
                 <div
                   key={f.path}
                   className={`group flex min-w-0 items-center gap-2 px-3 py-[3px] text-[11px] ${
-                    f.path === sel ? 'bg-panel2 text-ink' : 'text-dim hover:bg-panel2/60'
+                    f.path === sel ? 'bg-sel text-sel-ink' : 'text-dim hover:bg-hover/60'
                   }`}
                 >
                   <button type="button" onClick={() => setSel(f.path)} className="flex min-w-0 flex-1 items-center gap-2 text-left" title={f.path}>

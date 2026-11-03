@@ -46,7 +46,7 @@ export function EmptyState({
             className={cx(
               'flex items-center justify-center rounded-lg border',
               compact ? 'h-7 w-7 text-[13px]' : 'h-10 w-10 text-[17px]',
-              tone === 'error' ? 'border-alert/40 text-alert' : tone === 'warn' ? 'border-amber/40 text-amber' : 'border-edge2 text-faint',
+              tone === 'error' ? 'border-alert/40 text-alert' : tone === 'warn' ? 'border-[color-mix(in_srgb,var(--color-warn)_40%,transparent)] text-warn' : 'border-edge2 text-faint',
             )}
             aria-hidden
           >
@@ -54,7 +54,7 @@ export function EmptyState({
           </div>
         )
       )}
-      <div className={cx('label', tone === 'error' && 'text-alert', tone === 'warn' && 'text-amber')}>{title}</div>
+      <div className={cx('label', tone === 'error' && 'text-alert', tone === 'warn' && 'text-warn')}>{title}</div>
       {detail && <div className={cx('max-w-sm leading-relaxed text-dim', compact ? 'text-[10px]' : 'text-[11px]')}>{detail}</div>}
       {action && <div className="mt-1">{action}</div>}
     </div>
@@ -63,7 +63,7 @@ export function EmptyState({
 
 /** Ilustração de linha (grafite + acento do espaço), animada de leve. */
 export function EmptyArtSvg({ kind, tone = 'neutral' }: { kind: EmptyArt; tone?: 'neutral' | 'error' | 'warn' }) {
-  const accent = tone === 'error' ? 'var(--color-alert)' : tone === 'warn' ? 'var(--color-amber)' : 'var(--color-space)'
+  const accent = tone === 'error' ? 'var(--color-alert)' : tone === 'warn' ? 'var(--color-warn)' : 'var(--color-space)'
   return (
     <svg viewBox="0 0 120 80" width="120" height="80" aria-hidden className="hc-empty-art overflow-visible">
       <defs>

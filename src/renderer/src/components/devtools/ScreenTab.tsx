@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { hasMain, invoke } from '../../lib/ipc'
 import { errMsg, isNoHandler, openIn } from '../../lib/devtools'
+import { HOST_THIS, IS_MAC } from '../../lib/platform'
 import { ErrorState, ToolButton } from './ui'
 
-// Aba Tela Mac: screenshot sob demanda via ops:screenshot (desktopCapturer no
+// Aba Tela: screenshot sob demanda via ops:screenshot (desktopCapturer no
 // main) + auto-refresh opcional de 5s (só com a aba visível e a janela ativa).
-// Sem permissão de Gravação de Tela, o macOS devolve imagem preta/erro: o main
-// sinaliza com erro claro e aqui vira instrução.
+// Funciona em qualquer plataforma; a instrução de permissão de Gravação de
+// Tela é só do macOS (fora dele o Electron captura sem TCC).
 
 const PERM_RE = /permiss|grava[cç][aã]o de tela|screen ?recording|not authori[sz]ed|denied|tcc/i
 const AUTO_MS = 5000
@@ -44,7 +45,8 @@ export function ScreenTab({ active }: { active: boolean }) {
     return () => window.clearInterval(t)
   }, [auto, active, capture])
 
-  const perm = error ? PERM_RE.test(error) : false
+  // Instrução de TCC só vale no macOS; no Windows/Linux a falha é outra coisa.
+  const perm = error ? IS_MAC && PERM_RE.test(error) : false
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -93,13 +95,13 @@ export function ScreenTab({ active }: { active: boolean }) {
         {shot ? (
           <img
             src={shot.dataUrl}
-            alt="tela do Mac"
+            alt={`tela ${HOST_THIS}`}
             className="hc-fade-in max-h-full max-w-full rounded border border-edge object-contain"
             onDoubleClick={() => void capture()}
           />
         ) : !error ? (
           <div className="text-center text-[11px] leading-relaxed text-faint">
-            {hasMain() ? 'capture a tela do Mac sob demanda.' : 'captura indisponível fora do app.'}
+            {hasMain() ? `capture a tela ${HOST_THIS} sob demanda.` : 'captura indisponível fora do app.'}
             <br />
             nada é capturado sem você pedir.
           </div>

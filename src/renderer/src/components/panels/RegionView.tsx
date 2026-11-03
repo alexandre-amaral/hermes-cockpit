@@ -101,7 +101,7 @@ function BlockToolbar({
   onHide: () => void
 }) {
   const btn =
-    'hc-press flex h-5 w-5 items-center justify-center rounded text-[11px] text-faint hover:bg-panel2 hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent'
+    'hc-press flex h-5 w-5 items-center justify-center rounded text-[11px] text-faint hover:bg-hover hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent'
   return (
     <div className="hc-glass pointer-events-none absolute top-1.5 right-1.5 z-10 flex -translate-y-0.5 items-center gap-0.5 rounded-md px-0.5 opacity-0 transition-[opacity,translate] duration-[var(--hc-dur-2)] group-hover/block:pointer-events-auto group-hover/block:translate-y-0 group-hover/block:opacity-100 focus-within:pointer-events-auto focus-within:translate-y-0 focus-within:opacity-100">
       <button type="button" className={btn} disabled={!canBack} onClick={() => onMove(-1)} title="mover para trás">
@@ -174,7 +174,7 @@ function AddMenu({
                 setOpen(false)
               }}
               role="menuitem"
-              className="group/add flex w-full items-start gap-2 px-3 py-1.5 text-left text-[11px] text-dim transition-colors hover:bg-panel2 hover:text-ink"
+              className="group/add flex w-full items-start gap-2 px-3 py-1.5 text-left text-[11px] text-dim transition-colors hover:bg-hover hover:text-ink"
               title={p.descricao}
             >
               <Icon name={p.icon ?? 'plus'} size={12} className="mt-[1px] text-faint group-hover/add:text-space" />
